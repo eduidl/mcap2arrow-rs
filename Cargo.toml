@@ -1,0 +1,22 @@
+[workspace]
+members = ["mcap2arrow/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/eduidl/mcap2arrow-rs"
+include = [
+    "src/**/*",
+    "Cargo.toml",
+    "README.md",
+]
+
+[workspace.dependencies]
+mcap2arrow-core = { path = "mcap2arrow/mcap2arrow-core" }
+
+anyhow = "1.0.101"
+mcap = "0.24.0"
+memmap2 = "0.9.10"
+thiserror = "2.0.18"

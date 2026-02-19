@@ -1,0 +1,11 @@
+[project]
+name = "transmcap-core-scripts"
+version = "0.1.0"
+description = "Utility scripts for transmcap-core"
+requires-python = ">=3.11"
+dependencies = [
+  "mcap>=1.3.0,<2",
+]
+
+[tool.uv]
+package = false
