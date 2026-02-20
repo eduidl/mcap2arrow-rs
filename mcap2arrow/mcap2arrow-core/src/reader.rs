@@ -4,10 +4,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use anyhow::{Context, Result};
 use memmap2::Mmap;
 
 use crate::decoder::{EncodingKey, MessageDecoder};
+use crate::error::McapReaderError;
 use crate::message::{TopicInfo, TypedMessage};
 use crate::message_encoding::MessageEncoding;
 use crate::schema_encoding::SchemaEncoding;
@@ -29,17 +29,17 @@ impl McapReader {
         self.decoders.insert(decoder.encoding_key(), decoder);
     }
 
-    fn mmap_file(&self, path: &Path) -> Result<Mmap> {
-        let file = fs::File::open(path)
-            .with_context(|| format!("Failed to open {}", path.display()))?;
-        unsafe { Mmap::map(&file) }
-            .with_context(|| format!("Failed to mmap {}", path.display()))
+    fn mmap_file(&self, path: &Path) -> Result<Mmap, McapReaderError> {
+        let file = fs::File::open(path)?;
+        Ok(unsafe { Mmap::map(&file) }?)
     }
 
-    fn read_summary(&self, path: &Path) -> Result<mcap::read::Summary> {
+    fn read_summary(&self, path: &Path) -> Result<mcap::read::Summary, McapReaderError> {
         let mmap = self.mmap_file(path)?;
         mcap::read::Summary::read(&mmap)?
-            .with_context(|| format!("Failed to read MCAP summary from {}", path.display()))
+            .ok_or_else(|| McapReaderError::SummaryNotAvailable {
+                path: path.display().to_string(),
+            })
     }
 
     /// Iterate over messages in the MCAP file, optionally filtered by topic.
@@ -50,8 +50,8 @@ impl McapReader {
         &self,
         path: &Path,
         topic_filter: Option<&str>,
-        mut callback: impl FnMut(TypedMessage) -> Result<()>,
-    ) -> Result<()> {
+        mut callback: impl FnMut(TypedMessage) -> Result<(), Box<dyn std::error::Error + Send + Sync>>,
+    ) -> Result<(), McapReaderError> {
         let mmap = self.mmap_file(path)?;
 
         for message in mcap::MessageStream::new(&mmap)? {
@@ -64,11 +64,11 @@ impl McapReader {
                 }
             }
 
-            let schema = channel.schema.as_ref().with_context(|| {
-                format!(
-                    "Schema is required for topic '{}' (channel id {})",
-                    channel.topic, channel.id
-                )
+            let schema = channel.schema.as_ref().ok_or_else(|| {
+                McapReaderError::SchemaRequired {
+                    topic: channel.topic.clone(),
+                    channel_id: channel.id,
+                }
             })?;
             let schema_name = schema.name.as_str();
             let schema_enc = SchemaEncoding::from(schema.encoding.as_str());
@@ -76,15 +76,14 @@ impl McapReader {
 
             let key = EncodingKey::new(schema_enc.clone(), message_enc.clone());
 
-            let decoder = self.decoders.get(&key).with_context(|| {
-                format!(
-                    "No decoder registered for schema_encoding='{}', message_encoding='{}' on topic '{}'",
-                    schema_enc,
-                    message_enc,
-                    channel.topic
-                )
+            let decoder = self.decoders.get(&key).ok_or_else(|| {
+                McapReaderError::NoDecoder {
+                    schema_encoding: schema_enc.to_string(),
+                    message_encoding: message_enc.to_string(),
+                    topic: channel.topic.clone(),
+                }
             })?;
-            let value = decoder.decode(&schema.name, &schema.data, &message.data)?;
+            let value = decoder.decode(&schema.name, &schema.data, &message.data);
 
             callback(TypedMessage {
                 topic: channel.topic.clone(),
@@ -94,7 +93,8 @@ impl McapReader {
                 log_time: message.log_time,
                 publish_time: message.publish_time,
                 value,
-            })?;
+            })
+            .map_err(McapReaderError::Callback)?;
         }
 
         Ok(())
@@ -107,11 +107,13 @@ impl McapReader {
         &self,
         path: &Path,
         topic_filter: Option<&str>,
-    ) -> Result<Option<u64>> {
+    ) -> Result<Option<u64>, McapReaderError> {
         let summary = self.read_summary(path)?;
 
-        let stats = summary.stats.as_ref().with_context(|| {
-            format!("MCAP summary stats are required: {}", path.display())
+        let stats = summary.stats.as_ref().ok_or_else(|| {
+            McapReaderError::StatsRequired {
+                path: path.display().to_string(),
+            }
         })?;
 
         match topic_filter {
@@ -138,7 +140,7 @@ impl McapReader {
     ///
     /// MCAP summary is required. Schema-less channels are represented with an
     /// empty schema name and [`SchemaEncoding::None`].
-    pub fn list_topics(&self, path: &Path) -> Result<Vec<TopicInfo>> {
+    pub fn list_topics(&self, path: &Path) -> Result<Vec<TopicInfo>, McapReaderError> {
         let summary = self.read_summary(path)?;
 
         let channel_message_counts = summary
@@ -155,7 +157,7 @@ impl McapReader {
                     .copied()
                     .unwrap_or(0);
 
-                Ok(TopicInfo {
+                TopicInfo {
                     topic: channel.topic.clone(),
                     schema_name: channel
                         .schema
@@ -169,14 +171,13 @@ impl McapReader {
                         .unwrap_or(SchemaEncoding::None),
                     message_encoding: MessageEncoding::from(channel.message_encoding.as_str()),
                     message_count,
-                })
+                }
             })
-            .collect::<Result<Vec<_>>>()?;
+            .collect();
 
         topics.sort_by(|a, b| a.topic.cmp(&b.topic));
         Ok(topics)
     }
-
 }
 
 impl Default for McapReader {

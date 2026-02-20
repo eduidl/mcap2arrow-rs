@@ -7,7 +7,6 @@ repository.workspace = true
 include.workspace = true
 
 [dependencies]
-anyhow.workspace = true
 mcap.workspace = true
 memmap2.workspace = true
 thiserror.workspace = true

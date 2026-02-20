@@ -1,7 +1,5 @@
 //! Decoder trait and encoding key used to register pluggable message decoders.
 
-use anyhow::Result;
-
 use crate::message_encoding::MessageEncoding;
 use crate::schema::FieldDef;
 use crate::schema_encoding::SchemaEncoding;
@@ -27,26 +25,24 @@ impl EncodingKey {
 ///
 /// Implementations are registered with [`McapReader`](crate::McapReader) and
 /// dispatched based on [`EncodingKey`].
+///
+/// Decoding failures (corrupt data, schema mismatch, etc.) should **panic**
+/// rather than return errors — they are not recoverable at the reader level.
 pub trait MessageDecoder: Send + Sync {
     /// Returns the encoding pair this decoder handles.
     fn encoding_key(&self) -> EncodingKey;
 
     /// Decode a single message into a [`Value`].
-    fn decode(
-        &self,
-        schema_name: &str,
-        schema_data: &[u8],
-        message_data: &[u8],
-    ) -> Result<Value>;
-
-    /// Optionally derive a schema from MCAP schema metadata.
     ///
-    /// Default implementation returns `Ok(None)` so decoders can opt out.
-    fn derive_schema(
-        &self,
-        _schema_name: &str,
-        _schema_data: &[u8],
-    ) -> Result<Option<Vec<FieldDef>>> {
-        Ok(None)
-    }
+    /// # Panics
+    ///
+    /// Panics if `schema_data` or `message_data` cannot be decoded.
+    fn decode(&self, schema_name: &str, schema_data: &[u8], message_data: &[u8]) -> Value;
+
+    /// Derive a schema from MCAP schema metadata.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `schema_data` cannot be parsed.
+    fn derive_schema(&self, schema_name: &str, schema_data: &[u8]) -> Vec<FieldDef>;
 }

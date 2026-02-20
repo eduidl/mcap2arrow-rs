@@ -20,28 +20,39 @@ pub enum DataTypeDef {
     String,
     Bytes,
     Struct(Vec<FieldDef>),
-    List(Box<FieldDef>),
-    Array(Box<FieldDef>, usize),
+    List(Box<ElementDef>),
+    Array(Box<ElementDef>, usize),
     Map {
-        key: Box<FieldDef>,
-        value: Box<FieldDef>,
+        key: Box<ElementDef>,
+        value: Box<ElementDef>,
     },
+}
+
+/// Arrow-independent nested element definition used in composite types.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ElementDef {
+    pub data_type: DataTypeDef,
+    pub nullable: bool,
+}
+
+impl ElementDef {
+    pub fn new(data_type: DataTypeDef, nullable: bool) -> Self {
+        Self { data_type, nullable }
+    }
 }
 
 /// Arrow-independent field definition for schema intermediate representation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldDef {
     pub name: String,
-    pub data_type: DataTypeDef,
-    pub nullable: bool,
+    pub element: ElementDef,
 }
 
 impl FieldDef {
     pub fn new(name: impl Into<String>, data_type: DataTypeDef, nullable: bool) -> Self {
         Self {
             name: name.into(),
-            data_type,
-            nullable,
+            element: ElementDef::new(data_type, nullable),
         }
     }
 }

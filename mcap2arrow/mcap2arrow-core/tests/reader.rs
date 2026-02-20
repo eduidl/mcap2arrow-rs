@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
 use mcap2arrow_core::{
-    EncodingKey, McapReader, MessageDecoder, MessageEncoding, SchemaEncoding, Value,
+    DataTypeDef, EncodingKey, FieldDef, McapReader, McapReaderError, MessageDecoder,
+    MessageEncoding, SchemaEncoding, Value,
 };
 
 fn fixture_path(name: &str) -> PathBuf {
@@ -14,7 +14,6 @@ fn fixture_path(name: &str) -> PathBuf {
 
 struct TestJsonDecoder;
 struct OverriddenJsonDecoder;
-struct FailingJsonDecoder;
 
 impl MessageDecoder for TestJsonDecoder {
     fn encoding_key(&self) -> EncodingKey {
@@ -26,8 +25,12 @@ impl MessageDecoder for TestJsonDecoder {
         _schema_name: &str,
         _schema_data: &[u8],
         _message_data: &[u8],
-    ) -> Result<Value> {
-        Ok(Value::Struct(vec![Value::I64(1)]))
+    ) -> Value {
+        Value::Struct(vec![Value::I64(1)])
+    }
+
+    fn derive_schema(&self, _schema_name: &str, _schema_data: &[u8]) -> Vec<FieldDef> {
+        vec![FieldDef::new("value", DataTypeDef::I64, true)]
     }
 }
 
@@ -41,23 +44,12 @@ impl MessageDecoder for OverriddenJsonDecoder {
         _schema_name: &str,
         _schema_data: &[u8],
         _message_data: &[u8],
-    ) -> Result<Value> {
-        Ok(Value::Struct(vec![Value::I64(2)]))
-    }
-}
-
-impl MessageDecoder for FailingJsonDecoder {
-    fn encoding_key(&self) -> EncodingKey {
-        EncodingKey::new(SchemaEncoding::JsonSchema, MessageEncoding::Json)
+    ) -> Value {
+        Value::Struct(vec![Value::I64(2)])
     }
 
-    fn decode(
-        &self,
-        _schema_name: &str,
-        _schema_data: &[u8],
-        _message_data: &[u8],
-    ) -> Result<Value> {
-        Err(anyhow!("decode failed"))
+    fn derive_schema(&self, _schema_name: &str, _schema_data: &[u8]) -> Vec<FieldDef> {
+        vec![FieldDef::new("value", DataTypeDef::I64, true)]
     }
 }
 
@@ -74,7 +66,10 @@ fn message_count_with_summary() {
 fn message_count_no_summary_returns_error() {
     let reader = McapReader::new();
     let path = fixture_path("no_summary.mcap");
-    assert!(reader.message_count(&path, None).is_err());
+    assert!(matches!(
+        reader.message_count(&path, None),
+        Err(McapReaderError::SummaryNotAvailable { .. })
+    ));
 }
 
 #[test]
@@ -109,7 +104,10 @@ fn list_topics_from_summary_allows_schema_less_channel() {
 #[test]
 fn list_topics_without_summary_returns_error() {
     let reader = McapReader::new();
-    assert!(reader.list_topics(&fixture_path("no_summary.mcap")).is_err());
+    assert!(matches!(
+        reader.list_topics(&fixture_path("no_summary.mcap")),
+        Err(McapReaderError::SummaryNotAvailable { .. })
+    ));
 }
 
 #[test]
@@ -120,7 +118,7 @@ fn for_each_message_without_decoder_returns_error() {
             Ok(())
         })
         .unwrap_err();
-    assert!(err.to_string().contains("No decoder registered"));
+    assert!(matches!(err, McapReaderError::NoDecoder { .. }));
 }
 
 #[test]
@@ -144,10 +142,22 @@ fn for_each_message_with_decoder_decodes_only_supported_channel() {
     reader.register_decoder(Box::new(TestJsonDecoder));
 
     let mut decoded_topics = Vec::new();
+    let mut first_schema_name = None;
+    let mut first_schema_encoding = None;
+    let mut first_message_encoding = None;
+    let mut first_log_time = None;
+    let mut first_publish_time = None;
 
     reader
         .for_each_message(&fixture_path("with_summary.mcap"), Some("/decoded"), |msg| {
             decoded_topics.push(msg.topic.clone());
+            if first_schema_name.is_none() {
+                first_schema_name = Some(msg.schema_name.clone());
+                first_schema_encoding = Some(msg.schema_encoding.clone());
+                first_message_encoding = Some(msg.message_encoding.clone());
+                first_log_time = Some(msg.log_time);
+                first_publish_time = Some(msg.publish_time);
+            }
             assert!(matches!(msg.value, Value::Struct(_)));
             Ok(())
         })
@@ -157,6 +167,13 @@ fn for_each_message_with_decoder_decodes_only_supported_channel() {
         decoded_topics,
         vec!["/decoded".to_string(), "/decoded".to_string()]
     );
+    assert_eq!(first_schema_name.as_deref(), Some("test.Msg"));
+    assert_eq!(first_schema_encoding, Some(SchemaEncoding::JsonSchema));
+    assert_eq!(first_message_encoding, Some(MessageEncoding::Json));
+    let log_time = first_log_time.expect("expected decoded message log_time");
+    let publish_time = first_publish_time.expect("expected decoded message publish_time");
+    assert!(log_time > 0);
+    assert!(publish_time >= log_time);
 }
 
 #[test]
@@ -166,7 +183,10 @@ fn for_each_message_errors_when_schema_is_missing() {
     let err = reader
         .for_each_message(&fixture_path("with_summary.mcap"), None, |_msg| Ok(()))
         .unwrap_err();
-    assert!(err.to_string().contains("Schema is required for topic '/raw'"));
+    assert!(matches!(
+        err,
+        McapReaderError::SchemaRequired { ref topic, .. } if topic == "/raw"
+    ));
 }
 
 #[test]
@@ -194,22 +214,11 @@ fn for_each_message_propagates_callback_error() {
     reader.register_decoder(Box::new(TestJsonDecoder));
     let err = reader
         .for_each_message(&fixture_path("with_summary.mcap"), Some("/decoded"), |_msg| {
-            Err(anyhow!("callback failed"))
+            Err("callback failed".into())
         })
         .unwrap_err();
+    assert!(matches!(err, McapReaderError::Callback(_)));
     assert!(err.to_string().contains("callback failed"));
-}
-
-#[test]
-fn for_each_message_propagates_decoder_error() {
-    let mut reader = McapReader::new();
-    reader.register_decoder(Box::new(FailingJsonDecoder));
-    let err = reader
-        .for_each_message(&fixture_path("with_summary.mcap"), Some("/decoded"), |_msg| {
-            Ok(())
-        })
-        .unwrap_err();
-    assert!(err.to_string().contains("decode failed"));
 }
 
 #[test]
