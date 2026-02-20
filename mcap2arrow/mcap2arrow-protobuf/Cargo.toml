@@ -1,0 +1,17 @@
+[package]
+name = "mcap2arrow-protobuf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+include.workspace = true
+
+[dependencies]
+mcap2arrow-core.workspace = true
+prost-reflect = "0.16.3"
+prost-types = "0.14.3"
+thiserror.workspace = true
+
+[dev-dependencies]
+bytes = "1"
+prost = "0.14.3"

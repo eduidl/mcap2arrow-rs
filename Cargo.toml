@@ -15,6 +15,7 @@ include = [
 
 [workspace.dependencies]
 mcap2arrow-core = { path = "mcap2arrow/mcap2arrow-core" }
+mcap2arrow-protobuf = { path = "mcap2arrow/mcap2arrow-protobuf" }
 
 mcap = "0.24.0"
 memmap2 = "0.9.10"
