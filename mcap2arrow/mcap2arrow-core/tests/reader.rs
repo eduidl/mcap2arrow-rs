@@ -20,12 +20,7 @@ impl MessageDecoder for TestJsonDecoder {
         EncodingKey::new(SchemaEncoding::JsonSchema, MessageEncoding::Json)
     }
 
-    fn decode(
-        &self,
-        _schema_name: &str,
-        _schema_data: &[u8],
-        _message_data: &[u8],
-    ) -> Value {
+    fn decode(&self, _schema_name: &str, _schema_data: &[u8], _message_data: &[u8]) -> Value {
         Value::Struct(vec![Value::I64(1)])
     }
 
@@ -39,12 +34,7 @@ impl MessageDecoder for OverriddenJsonDecoder {
         EncodingKey::new(SchemaEncoding::JsonSchema, MessageEncoding::Json)
     }
 
-    fn decode(
-        &self,
-        _schema_name: &str,
-        _schema_data: &[u8],
-        _message_data: &[u8],
-    ) -> Value {
+    fn decode(&self, _schema_name: &str, _schema_data: &[u8], _message_data: &[u8]) -> Value {
         Value::Struct(vec![Value::I64(2)])
     }
 
@@ -59,7 +49,10 @@ fn message_count_with_summary() {
     let path = fixture_path("with_summary.mcap");
 
     assert_eq!(reader.message_count(&path, None).unwrap(), Some(3));
-    assert_eq!(reader.message_count(&path, Some("/decoded")).unwrap(), Some(2));
+    assert_eq!(
+        reader.message_count(&path, Some("/decoded")).unwrap(),
+        Some(2)
+    );
 }
 
 #[test]
@@ -76,13 +69,18 @@ fn message_count_no_summary_returns_error() {
 fn message_count_unknown_topic_is_zero() {
     let reader = McapReader::new();
     let path = fixture_path("with_summary.mcap");
-    assert_eq!(reader.message_count(&path, Some("/unknown")).unwrap(), Some(0));
+    assert_eq!(
+        reader.message_count(&path, Some("/unknown")).unwrap(),
+        Some(0)
+    );
 }
 
 #[test]
 fn list_topics_from_summary_allows_schema_less_channel() {
     let reader = McapReader::new();
-    let topics = reader.list_topics(&fixture_path("with_summary.mcap")).unwrap();
+    let topics = reader
+        .list_topics(&fixture_path("with_summary.mcap"))
+        .unwrap();
     assert_eq!(topics.len(), 2);
     assert_eq!(topics[0].topic, "/decoded");
     assert_eq!(topics[1].topic, "/raw");
@@ -114,9 +112,11 @@ fn list_topics_without_summary_returns_error() {
 fn for_each_message_without_decoder_returns_error() {
     let reader = McapReader::new();
     let err = reader
-        .for_each_message(&fixture_path("with_summary.mcap"), Some("/decoded"), |_msg| {
-            Ok(())
-        })
+        .for_each_message(
+            &fixture_path("with_summary.mcap"),
+            Some("/decoded"),
+            |_msg| Ok(()),
+        )
         .unwrap_err();
     assert!(matches!(err, McapReaderError::NoDecoder { .. }));
 }
@@ -128,10 +128,14 @@ fn for_each_message_non_matching_topic_filter_is_ok_and_no_callback() {
 
     let mut called = false;
     reader
-        .for_each_message(&fixture_path("with_summary.mcap"), Some("/unknown"), |_msg| {
-            called = true;
-            Ok(())
-        })
+        .for_each_message(
+            &fixture_path("with_summary.mcap"),
+            Some("/unknown"),
+            |_msg| {
+                called = true;
+                Ok(())
+            },
+        )
         .unwrap();
     assert!(!called);
 }
@@ -149,18 +153,22 @@ fn for_each_message_with_decoder_decodes_only_supported_channel() {
     let mut first_publish_time = None;
 
     reader
-        .for_each_message(&fixture_path("with_summary.mcap"), Some("/decoded"), |msg| {
-            decoded_topics.push(msg.topic.clone());
-            if first_schema_name.is_none() {
-                first_schema_name = Some(msg.schema_name.clone());
-                first_schema_encoding = Some(msg.schema_encoding.clone());
-                first_message_encoding = Some(msg.message_encoding.clone());
-                first_log_time = Some(msg.log_time);
-                first_publish_time = Some(msg.publish_time);
-            }
-            assert!(matches!(msg.value, Value::Struct(_)));
-            Ok(())
-        })
+        .for_each_message(
+            &fixture_path("with_summary.mcap"),
+            Some("/decoded"),
+            |msg| {
+                decoded_topics.push(msg.topic.clone());
+                if first_schema_name.is_none() {
+                    first_schema_name = Some(msg.schema_name.clone());
+                    first_schema_encoding = Some(msg.schema_encoding.clone());
+                    first_message_encoding = Some(msg.message_encoding.clone());
+                    first_log_time = Some(msg.log_time);
+                    first_publish_time = Some(msg.publish_time);
+                }
+                assert!(matches!(msg.value, Value::Struct(_)));
+                Ok(())
+            },
+        )
         .unwrap();
 
     assert_eq!(
@@ -196,16 +204,17 @@ fn for_each_message_topic_filter_limits_output() {
     let mut topics = Vec::new();
 
     reader
-        .for_each_message(&fixture_path("with_summary.mcap"), Some("/decoded"), |msg| {
-            topics.push(msg.topic);
-            Ok(())
-        })
+        .for_each_message(
+            &fixture_path("with_summary.mcap"),
+            Some("/decoded"),
+            |msg| {
+                topics.push(msg.topic);
+                Ok(())
+            },
+        )
         .unwrap();
 
-    assert_eq!(
-        topics,
-        vec!["/decoded".to_string(), "/decoded".to_string()]
-    );
+    assert_eq!(topics, vec!["/decoded".to_string(), "/decoded".to_string()]);
 }
 
 #[test]
@@ -213,9 +222,11 @@ fn for_each_message_propagates_callback_error() {
     let mut reader = McapReader::new();
     reader.register_decoder(Box::new(TestJsonDecoder));
     let err = reader
-        .for_each_message(&fixture_path("with_summary.mcap"), Some("/decoded"), |_msg| {
-            Err("callback failed".into())
-        })
+        .for_each_message(
+            &fixture_path("with_summary.mcap"),
+            Some("/decoded"),
+            |_msg| Err("callback failed".into()),
+        )
         .unwrap_err();
     assert!(matches!(err, McapReaderError::Callback(_)));
     assert!(err.to_string().contains("callback failed"));
@@ -229,12 +240,16 @@ fn register_decoder_overwrites_same_encoding_key() {
 
     let mut first = None;
     reader
-        .for_each_message(&fixture_path("with_summary.mcap"), Some("/decoded"), |msg| {
-            if first.is_none() {
-                first = Some(msg.value);
-            }
-            Ok(())
-        })
+        .for_each_message(
+            &fixture_path("with_summary.mcap"),
+            Some("/decoded"),
+            |msg| {
+                if first.is_none() {
+                    first = Some(msg.value);
+                }
+                Ok(())
+            },
+        )
         .unwrap();
 
     match first {

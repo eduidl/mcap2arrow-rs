@@ -2,13 +2,13 @@ mod test_helpers;
 
 use mcap2arrow_core::Value;
 use mcap2arrow_protobuf::{
-    PresencePolicy, decode_protobuf_to_value, decode_protobuf_to_value_with_policy,
+    decode_protobuf_to_value, decode_protobuf_to_value_with_policy, PresencePolicy,
 };
 use prost::Message;
-use prost_reflect::{DynamicMessage, DescriptorPool};
+use prost_reflect::{DescriptorPool, DynamicMessage};
 use prost_types::{
-    DescriptorProto,
     field_descriptor_proto::{Label, Type},
+    DescriptorProto,
 };
 use test_helpers::*;
 
@@ -18,10 +18,7 @@ fn encode_dynamic(msg: &DynamicMessage) -> Vec<u8> {
 }
 
 /// Build a `DescriptorPool` from FDS bytes and get a message descriptor.
-fn pool_and_desc(
-    fds: &[u8],
-    name: &str,
-) -> (DescriptorPool, prost_reflect::MessageDescriptor) {
+fn pool_and_desc(fds: &[u8], name: &str) -> (DescriptorPool, prost_reflect::MessageDescriptor) {
     let pool = DescriptorPool::decode(fds).unwrap();
     let desc = pool.get_message_by_name(name).unwrap();
     (pool, desc)
@@ -55,7 +52,10 @@ fn decode_scalar_fields() {
     dm.set_field_by_name("f_uint32", prost_reflect::Value::U32(42));
     dm.set_field_by_name("f_uint64", prost_reflect::Value::U64(100));
     dm.set_field_by_name("f_bool", prost_reflect::Value::Bool(true));
-    dm.set_field_by_name("f_string", prost_reflect::Value::String("hello".to_string()));
+    dm.set_field_by_name(
+        "f_string",
+        prost_reflect::Value::String("hello".to_string()),
+    );
     dm.set_field_by_name(
         "f_bytes",
         prost_reflect::Value::Bytes(bytes::Bytes::from_static(b"\x01\x02\x03")),

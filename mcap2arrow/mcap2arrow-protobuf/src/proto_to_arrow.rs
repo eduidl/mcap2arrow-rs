@@ -117,7 +117,12 @@ fn proto_value_to_value(value: &ProtoValue, kind: &Kind, policy: PresencePolicy)
             };
             let entries = map
                 .iter()
-                .map(|(k, v)| (map_key_to_value(k), proto_value_to_value(v, &value_kind, policy)))
+                .map(|(k, v)| {
+                    (
+                        map_key_to_value(k),
+                        proto_value_to_value(v, &value_kind, policy),
+                    )
+                })
                 .collect();
             Value::Map(entries)
         }

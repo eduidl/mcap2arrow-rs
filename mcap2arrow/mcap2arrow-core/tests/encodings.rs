@@ -29,7 +29,10 @@ fn message_encoding_known_mappings() {
     assert_eq!(MessageEncoding::from("ros1"), MessageEncoding::Ros1);
     assert_eq!(MessageEncoding::from("cdr"), MessageEncoding::Cdr);
     assert_eq!(MessageEncoding::from("protobuf"), MessageEncoding::Protobuf);
-    assert_eq!(MessageEncoding::from("flatbuffer"), MessageEncoding::FlatBuffer);
+    assert_eq!(
+        MessageEncoding::from("flatbuffer"),
+        MessageEncoding::FlatBuffer
+    );
     assert_eq!(MessageEncoding::from("cbor"), MessageEncoding::Cbor);
     assert_eq!(MessageEncoding::from("msgpack"), MessageEncoding::MsgPack);
     assert_eq!(MessageEncoding::from("json"), MessageEncoding::Json);

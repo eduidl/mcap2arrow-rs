@@ -2,9 +2,9 @@
 
 use prost::Message;
 use prost_types::{
+    field_descriptor_proto::{Label, Type},
     DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
     FileDescriptorProto, FileDescriptorSet, OneofDescriptorProto,
-    field_descriptor_proto::{Label, Type},
 };
 
 /// Build a `FileDescriptorSet` containing a single file with the given message
@@ -100,11 +100,7 @@ pub fn simple_enum(name: &str, values: &[(&str, i32)]) -> EnumDescriptorProto {
 
 /// Create a map entry message (protobuf encodes maps as repeated message
 /// fields with a special map_entry option).
-pub fn map_entry_message(
-    name: &str,
-    key_type: Type,
-    value_type: Type,
-) -> DescriptorProto {
+pub fn map_entry_message(name: &str, key_type: Type, value_type: Type) -> DescriptorProto {
     use prost_types::MessageOptions;
     DescriptorProto {
         name: Some(name.to_string()),

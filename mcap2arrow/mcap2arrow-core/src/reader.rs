@@ -36,10 +36,9 @@ impl McapReader {
 
     fn read_summary(&self, path: &Path) -> Result<mcap::read::Summary, McapReaderError> {
         let mmap = self.mmap_file(path)?;
-        mcap::read::Summary::read(&mmap)?
-            .ok_or_else(|| McapReaderError::SummaryNotAvailable {
-                path: path.display().to_string(),
-            })
+        mcap::read::Summary::read(&mmap)?.ok_or_else(|| McapReaderError::SummaryNotAvailable {
+            path: path.display().to_string(),
+        })
     }
 
     /// Iterate over messages in the MCAP file, optionally filtered by topic.
@@ -64,25 +63,28 @@ impl McapReader {
                 }
             }
 
-            let schema = channel.schema.as_ref().ok_or_else(|| {
-                McapReaderError::SchemaRequired {
-                    topic: channel.topic.clone(),
-                    channel_id: channel.id,
-                }
-            })?;
+            let schema =
+                channel
+                    .schema
+                    .as_ref()
+                    .ok_or_else(|| McapReaderError::SchemaRequired {
+                        topic: channel.topic.clone(),
+                        channel_id: channel.id,
+                    })?;
             let schema_name = schema.name.as_str();
             let schema_enc = SchemaEncoding::from(schema.encoding.as_str());
             let message_enc = MessageEncoding::from(channel.message_encoding.as_str());
 
             let key = EncodingKey::new(schema_enc.clone(), message_enc.clone());
 
-            let decoder = self.decoders.get(&key).ok_or_else(|| {
-                McapReaderError::NoDecoder {
+            let decoder = self
+                .decoders
+                .get(&key)
+                .ok_or_else(|| McapReaderError::NoDecoder {
                     schema_encoding: schema_enc.to_string(),
                     message_encoding: message_enc.to_string(),
                     topic: channel.topic.clone(),
-                }
-            })?;
+                })?;
             let value = decoder.decode(&schema.name, &schema.data, &message.data);
 
             callback(TypedMessage {
@@ -110,11 +112,12 @@ impl McapReader {
     ) -> Result<Option<u64>, McapReaderError> {
         let summary = self.read_summary(path)?;
 
-        let stats = summary.stats.as_ref().ok_or_else(|| {
-            McapReaderError::StatsRequired {
+        let stats = summary
+            .stats
+            .as_ref()
+            .ok_or_else(|| McapReaderError::StatsRequired {
                 path: path.display().to_string(),
-            }
-        })?;
+            })?;
 
         match topic_filter {
             None => Ok(Some(stats.message_count)),
@@ -143,10 +146,7 @@ impl McapReader {
     pub fn list_topics(&self, path: &Path) -> Result<Vec<TopicInfo>, McapReaderError> {
         let summary = self.read_summary(path)?;
 
-        let channel_message_counts = summary
-            .stats
-            .as_ref()
-            .map(|s| &s.channel_message_counts);
+        let channel_message_counts = summary.stats.as_ref().map(|s| &s.channel_message_counts);
 
         let mut topics: Vec<TopicInfo> = summary
             .channels

@@ -37,7 +37,10 @@ pub struct ElementDef {
 
 impl ElementDef {
     pub fn new(data_type: DataTypeDef, nullable: bool) -> Self {
-        Self { data_type, nullable }
+        Self {
+            data_type,
+            nullable,
+        }
     }
 }
 

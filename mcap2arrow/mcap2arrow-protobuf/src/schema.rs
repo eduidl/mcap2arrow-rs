@@ -16,10 +16,7 @@ use crate::PresencePolicy;
 ///
 /// Panics if the descriptor set cannot be decoded or the target message
 /// descriptor is missing.
-pub fn protobuf_descriptor_to_schema(
-    schema_name: &str,
-    schema_data: &[u8],
-) -> Vec<FieldDef> {
+pub fn protobuf_descriptor_to_schema(schema_name: &str, schema_data: &[u8]) -> Vec<FieldDef> {
     protobuf_descriptor_to_schema_with_policy(
         schema_name,
         schema_data,
@@ -42,26 +39,24 @@ pub fn protobuf_descriptor_to_schema_with_policy(
     message_fields_to_field_defs(&message_desc, policy)
 }
 
-fn message_fields_to_field_defs(
-    desc: &MessageDescriptor,
-    policy: PresencePolicy,
-) -> Vec<FieldDef> {
+fn message_fields_to_field_defs(desc: &MessageDescriptor, policy: PresencePolicy) -> Vec<FieldDef> {
     desc.fields()
         .map(|f| field_descriptor_to_field_def(&f, policy))
         .collect()
 }
 
-fn field_descriptor_to_field_def(
-    fd: &FieldDescriptor,
-    policy: PresencePolicy,
-) -> FieldDef {
+fn field_descriptor_to_field_def(fd: &FieldDescriptor, policy: PresencePolicy) -> FieldDef {
     let inner_dt = kind_to_data_type_def(fd, policy);
 
     let dt = if fd.is_list() {
         DataTypeDef::List(Box::new(ElementDef::new(inner_dt, false)))
     } else if fd.is_map() {
         let Kind::Message(entry_desc) = fd.kind() else {
-            panic!("map field `{}` has non-message kind: {:?}", fd.name(), fd.kind());
+            panic!(
+                "map field `{}` has non-message kind: {:?}",
+                fd.name(),
+                fd.kind()
+            );
         };
         let key_field = entry_desc
             .get_field_by_name("key")

@@ -2,11 +2,11 @@ mod test_helpers;
 
 use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef};
 use mcap2arrow_protobuf::{
-    PresencePolicy, protobuf_descriptor_to_schema, protobuf_descriptor_to_schema_with_policy,
+    protobuf_descriptor_to_schema, protobuf_descriptor_to_schema_with_policy, PresencePolicy,
 };
 use prost_types::{
-    DescriptorProto,
     field_descriptor_proto::{Label, Type},
+    DescriptorProto,
 };
 use test_helpers::*;
 
@@ -127,7 +127,12 @@ fn map_field_becomes_map_type() {
     let entry = map_entry_message("LabelsEntry", Type::String, Type::String);
     let msg = DescriptorProto {
         name: Some("WithMap".to_string()),
-        field: vec![message_field("labels", 1, ".WithMap.LabelsEntry", Label::Repeated)],
+        field: vec![message_field(
+            "labels",
+            1,
+            ".WithMap.LabelsEntry",
+            Label::Repeated,
+        )],
         nested_type: vec![entry],
         ..Default::default()
     };
@@ -189,11 +194,8 @@ fn legacy_policy_fields_are_not_nullable() {
     };
     let fds = build_fds("legacy.proto", vec![msg]);
 
-    let schema = protobuf_descriptor_to_schema_with_policy(
-        "Scalars",
-        &fds,
-        PresencePolicy::AlwaysDefault,
-    );
+    let schema =
+        protobuf_descriptor_to_schema_with_policy("Scalars", &fds, PresencePolicy::AlwaysDefault);
     assert_eq!(schema.len(), 1);
     assert!(!schema[0].element.nullable);
 }
