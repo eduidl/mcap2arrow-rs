@@ -7,7 +7,7 @@ pub enum McapReaderError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
-    /// Error from the underlying `mcap` crate (bad magic, CRC mismatch, …).
+    /// Error from the underlying `mcap` crate (bad magic, CRC mismatch, ...).
     #[error(transparent)]
     Mcap(#[from] mcap::McapError),
 
@@ -23,8 +23,12 @@ pub enum McapReaderError {
     #[error("schema required for topic '{topic}' (channel id {channel_id})")]
     SchemaRequired { topic: String, channel_id: u16 },
 
-    /// No [`MessageDecoder`](crate::MessageDecoder) was registered for the
-    /// encoding pair found on a channel.
+    /// The requested topic was not found in the MCAP file.
+    #[error("topic '{topic}' not found")]
+    TopicNotFound { topic: String },
+
+    /// No [`MessageDecoder`](mcap2arrow_core::MessageDecoder) was registered for
+    /// the encoding pair found on a channel.
     #[error("no decoder registered for schema_encoding='{schema_encoding}', message_encoding='{message_encoding}' on topic '{topic}'")]
     NoDecoder {
         schema_encoding: String,
@@ -32,8 +36,12 @@ pub enum McapReaderError {
         topic: String,
     },
 
+    /// A decoder-derived schema had no fields and cannot be converted to Arrow.
+    #[error("failed to derive schema for topic '{topic}' (schema: '{schema_name}')")]
+    EmptyDerivedSchema { topic: String, schema_name: String },
+
     /// An error returned by the user-supplied callback in
-    /// [`McapReader::for_each_message`](crate::McapReader::for_each_message).
+    /// [`McapReader::for_each_record_batch`](crate::McapReader::for_each_record_batch).
     #[error(transparent)]
     Callback(Box<dyn std::error::Error + Send + Sync>),
 }

@@ -2,7 +2,7 @@
 //!
 //! This crate focuses on two responsibilities:
 //! 1. Convert `mcap2arrow-core` schema IR (`FieldDef`) to Arrow `Schema`.
-//! 2. Convert decoded `TypedMessage` rows into Arrow `RecordBatch`.
+//! 2. Convert decoded `DecodedMessage` rows into Arrow `RecordBatch`.
 //!
 //! `mcap2arrow-arrow` intentionally keeps the public API small and exposes only
 //! two entry points:
@@ -16,10 +16,10 @@
 //! # Typical Flow
 //! ```rust
 //! use mcap2arrow_arrow::{arrow_value_rows_to_record_batch, field_defs_to_arrow_schema};
-//! use mcap2arrow_core::{FieldDef, TypedMessage};
+//! use mcap2arrow_core::{DecodedMessage, FieldDef};
 //!
 //! # let field_defs: Vec<FieldDef> = vec![];
-//! # let rows: Vec<TypedMessage> = vec![];
+//! # let rows: Vec<DecodedMessage> = vec![];
 //! let body_schema = field_defs_to_arrow_schema(&field_defs);
 //! // rows must not be empty.
 //! if !rows.is_empty() {

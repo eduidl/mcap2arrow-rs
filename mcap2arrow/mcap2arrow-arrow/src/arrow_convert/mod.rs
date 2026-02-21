@@ -1,4 +1,4 @@
-//! Conversion from decoded `TypedMessage` rows to Arrow `RecordBatch`.
+//! Conversion from decoded `DecodedMessage` rows to Arrow `RecordBatch`.
 //!
 //! The output schema is the given body schema with `@log_time` and
 //! `@publish_time` timestamp columns prepended.
@@ -12,7 +12,7 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, TimestampNanosecondArray};
 use arrow::datatypes::{DataType, Schema};
 use arrow::record_batch::RecordBatch;
-use mcap2arrow_core::{TypedMessage, Value};
+use mcap2arrow_core::{DecodedMessage, Value};
 
 /// Convert decoded rows to a RecordBatch.
 ///
@@ -27,7 +27,7 @@ use mcap2arrow_core::{TypedMessage, Value};
 /// - an unsupported Arrow data type is present in `body_schema`.
 pub fn arrow_value_rows_to_record_batch(
     body_schema: &Schema,
-    rows: &[TypedMessage],
+    rows: &[DecodedMessage],
 ) -> RecordBatch {
     if rows.is_empty() {
         panic!("Cannot create RecordBatch from empty rows");

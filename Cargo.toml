@@ -14,6 +14,7 @@ include = [
 ]
 
 [workspace.dependencies]
+mcap2arrow = { path = "mcap2arrow/mcap2arrow" }
 mcap2arrow-arrow = { path = "mcap2arrow/mcap2arrow-arrow" }
 mcap2arrow-core = { path = "mcap2arrow/mcap2arrow-core" }
 mcap2arrow-protobuf = { path = "mcap2arrow/mcap2arrow-protobuf" }

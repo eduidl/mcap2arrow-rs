@@ -23,7 +23,7 @@ impl EncodingKey {
 
 /// Trait for decoding raw MCAP message bytes into [`Value`].
 ///
-/// Implementations are registered with [`McapReader`](crate::McapReader) and
+/// Implementations are registered with `mcap2arrow::McapReader` and
 /// dispatched based on [`EncodingKey`].
 ///
 /// Decoding failures (corrupt data, schema mismatch, etc.) should **panic**

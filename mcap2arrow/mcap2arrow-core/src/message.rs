@@ -1,26 +1,11 @@
-//! Message types produced by [`McapReader`](crate::McapReader).
+//! Message types used for Arrow conversion.
 
-use crate::message_encoding::MessageEncoding;
-use crate::schema_encoding::SchemaEncoding;
 use crate::value::Value;
 
-/// A decoded message together with its topic and timing metadata.
-pub struct TypedMessage {
-    pub topic: String,
-    pub schema_name: String,
-    pub schema_encoding: SchemaEncoding,
-    pub message_encoding: MessageEncoding,
+/// A decoded message payload used for Arrow conversion.
+#[derive(Debug)]
+pub struct DecodedMessage {
     pub log_time: u64,
     pub publish_time: u64,
     pub value: Value,
-}
-
-/// Summary information about a single topic in an MCAP file.
-#[derive(Debug, Clone)]
-pub struct TopicInfo {
-    pub topic: String,
-    pub schema_name: String,
-    pub schema_encoding: SchemaEncoding,
-    pub message_encoding: MessageEncoding,
-    pub message_count: u64,
 }

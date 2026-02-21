@@ -6,14 +6,10 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field, Schema};
 use mcap2arrow_arrow::arrow_value_rows_to_record_batch;
-use mcap2arrow_core::{MessageEncoding, SchemaEncoding, TypedMessage, Value};
+use mcap2arrow_core::{DecodedMessage, Value};
 
-fn make_row(log_time: u64, publish_time: u64, value: Value) -> TypedMessage {
-    TypedMessage {
-        topic: String::new(),
-        schema_name: String::new(),
-        schema_encoding: SchemaEncoding::None,
-        message_encoding: MessageEncoding::Unknown(String::new()),
+fn make_row(log_time: u64, publish_time: u64, value: Value) -> DecodedMessage {
+    DecodedMessage {
         log_time,
         publish_time,
         value,
@@ -206,7 +202,7 @@ fn arrow_value_rows_to_record_batch_mixed_types() {
 #[should_panic(expected = "Cannot create RecordBatch from empty rows")]
 fn empty_rows_panics() {
     let schema = test_schema();
-    let rows: Vec<TypedMessage> = Vec::new();
+    let rows: Vec<DecodedMessage> = Vec::new();
     arrow_value_rows_to_record_batch(&schema, &rows);
 }
 

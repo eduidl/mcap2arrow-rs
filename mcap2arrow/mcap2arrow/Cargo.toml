@@ -1,0 +1,21 @@
+[package]
+name = "mcap2arrow"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+include.workspace = true
+
+[dependencies]
+mcap2arrow-arrow.workspace = true
+mcap2arrow-core.workspace = true
+arrow = { workspace = true, features = ["prettyprint"] }
+mcap.workspace = true
+memmap2.workspace = true
+thiserror.workspace = true
+
+mcap2arrow-protobuf = { workspace = true, optional = true }
+
+[features]
+default = ["protobuf"]
+protobuf = ["dep:mcap2arrow-protobuf"]
