@@ -2,7 +2,7 @@
 
 /// Arrow-independent data type definition for schema intermediate representation.
 ///
-/// Variant names mirror [`Value`] for consistency (values ↔ types).
+/// Variant names mirror [`Value`](crate::Value) for consistency (values ↔ types).
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataTypeDef {
     Null,
