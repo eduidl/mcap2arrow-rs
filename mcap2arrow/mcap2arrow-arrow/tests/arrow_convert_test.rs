@@ -267,3 +267,73 @@ fn fixed_size_list_length_mismatch_panics() {
     )];
     arrow_value_rows_to_record_batch(&schema, &rows);
 }
+
+#[test]
+fn list_item_nullability_is_preserved() {
+    let schema = Arc::new(Schema::new(vec![Field::new(
+        "list_non_null_item",
+        DataType::List(Arc::new(Field::new("item", DataType::Int32, false))),
+        true,
+    )]));
+    let rows = vec![make_row(
+        1_u64,
+        2_u64,
+        Value::Struct(vec![Value::List(vec![Value::I32(1), Value::I32(2)])]),
+    )];
+
+    let batch = arrow_value_rows_to_record_batch(&schema, &rows);
+    let batch_schema = batch.schema();
+    let dt = batch_schema.field(2).data_type();
+    assert_eq!(
+        dt,
+        &DataType::List(Arc::new(Field::new("item", DataType::Int32, false)))
+    );
+}
+
+#[test]
+fn map_value_nullability_is_preserved() {
+    let schema = Arc::new(Schema::new(vec![Field::new(
+        "map_str_i32_non_null_value",
+        DataType::Map(
+            Arc::new(Field::new(
+                "entries",
+                DataType::Struct(
+                    vec![
+                        Field::new("key", DataType::Utf8, false),
+                        Field::new("value", DataType::Int32, false),
+                    ]
+                    .into(),
+                ),
+                false,
+            )),
+            false,
+        ),
+        true,
+    )]));
+    let rows = vec![make_row(
+        1_u64,
+        2_u64,
+        Value::Struct(vec![Value::Map(vec![(Value::string("k"), Value::I32(1))])]),
+    )];
+
+    let batch = arrow_value_rows_to_record_batch(&schema, &rows);
+    let batch_schema = batch.schema();
+    let dt = batch_schema.field(2).data_type();
+    assert_eq!(
+        dt,
+        &DataType::Map(
+            Arc::new(Field::new(
+                "entries",
+                DataType::Struct(
+                    vec![
+                        Field::new("key", DataType::Utf8, false),
+                        Field::new("value", DataType::Int32, false),
+                    ]
+                    .into(),
+                ),
+                false,
+            )),
+            false,
+        )
+    );
+}

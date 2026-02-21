@@ -34,4 +34,4 @@ pub use arrow_convert::arrow_value_rows_to_record_batch;
 /// Re-export of [`schema_convert::field_defs_to_arrow_schema`].
 pub use schema_convert::field_defs_to_arrow_schema;
 
-pub(crate) const TIMESTAMP_TZ: &str = "UTC";
+pub(crate) const TIMESTAMP_TZ: &str = "+00:00";

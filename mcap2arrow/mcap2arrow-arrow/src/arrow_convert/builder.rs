@@ -27,11 +27,11 @@ pub(super) fn make_builder(dt: &DataType, capacity: usize) -> Box<dyn ArrayBuild
         }
         DataType::List(field) => {
             let child = make_builder(field.data_type(), capacity);
-            Box::new(ListBuilder::new(child))
+            Box::new(ListBuilder::new(child).with_field(field.clone()))
         }
         DataType::FixedSizeList(field, size) => {
             let child = make_builder(field.data_type(), capacity * (*size as usize));
-            Box::new(FixedSizeListBuilder::new(child, *size))
+            Box::new(FixedSizeListBuilder::new(child, *size).with_field(field.clone()))
         }
         DataType::Struct(fields) => {
             let child_builders: Vec<Box<dyn ArrayBuilder>> = fields
@@ -58,7 +58,9 @@ pub(super) fn make_builder(dt: &DataType, capacity: usize) -> Box<dyn ArrayBuild
                 }),
                 key_builder,
                 value_builder,
-            ))
+            )
+            .with_keys_field(key_field)
+            .with_values_field(value_field))
         }
         other => panic!("unsupported DataType for builder: {other:?}"),
     }
