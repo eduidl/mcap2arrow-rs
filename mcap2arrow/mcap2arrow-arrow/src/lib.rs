@@ -1,0 +1,37 @@
+//! Arrow integration layer for `mcap2arrow`.
+//!
+//! This crate focuses on two responsibilities:
+//! 1. Convert `mcap2arrow-core` schema IR (`FieldDef`) to Arrow `Schema`.
+//! 2. Convert decoded `TypedMessage` rows into Arrow `RecordBatch`.
+//!
+//! `mcap2arrow-arrow` intentionally keeps the public API small and exposes only
+//! two entry points:
+//! - [`field_defs_to_arrow_schema`] for schema conversion.
+//! - [`arrow_value_rows_to_record_batch`] for row-to-batch conversion.
+//!
+//! Both conversions follow the conventions used by this project:
+//! - Timestamp columns are represented as nanosecond `Timestamp` with `UTC`.
+//! - `RecordBatch` output prepends `@log_time` and `@publish_time`.
+//!
+//! # Typical Flow
+//! ```rust
+//! use mcap2arrow_arrow::{arrow_value_rows_to_record_batch, field_defs_to_arrow_schema};
+//! use mcap2arrow_core::{FieldDef, TypedMessage};
+//!
+//! # let field_defs: Vec<FieldDef> = vec![];
+//! # let rows: Vec<TypedMessage> = vec![];
+//! let body_schema = field_defs_to_arrow_schema(&field_defs);
+//! // rows must not be empty.
+//! if !rows.is_empty() {
+//!     let _batch = arrow_value_rows_to_record_batch(&body_schema, &rows);
+//! }
+//! ```
+pub mod arrow_convert;
+pub mod schema_convert;
+
+/// Re-export of [`arrow_convert::arrow_value_rows_to_record_batch`].
+pub use arrow_convert::arrow_value_rows_to_record_batch;
+/// Re-export of [`schema_convert::field_defs_to_arrow_schema`].
+pub use schema_convert::field_defs_to_arrow_schema;
+
+pub(crate) const TIMESTAMP_TZ: &str = "UTC";
