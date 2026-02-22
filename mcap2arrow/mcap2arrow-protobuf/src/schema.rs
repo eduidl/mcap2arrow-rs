@@ -1,11 +1,11 @@
 //! Convert a protobuf `FileDescriptorSet` into [`FieldDef`] schema.
 
-use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef};
+use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef, FieldDefs};
 use prost_reflect::{DescriptorPool, FieldDescriptor, Kind, MessageDescriptor};
 
 use crate::PresencePolicy;
 
-/// Derive an Arrow-independent schema ([`Vec<FieldDef>`]) from the given
+/// Derive an Arrow-independent schema ([`FieldDefs`]) from the given
 /// protobuf `FileDescriptorSet` bytes.
 ///
 /// `schema_name` is the fully-qualified protobuf message name
@@ -16,7 +16,7 @@ use crate::PresencePolicy;
 ///
 /// Panics if the descriptor set cannot be decoded or the target message
 /// descriptor is missing.
-pub fn protobuf_descriptor_to_schema(schema_name: &str, schema_data: &[u8]) -> Vec<FieldDef> {
+pub fn protobuf_descriptor_to_schema(schema_name: &str, schema_data: &[u8]) -> FieldDefs {
     protobuf_descriptor_to_schema_with_policy(
         schema_name,
         schema_data,
@@ -29,7 +29,7 @@ pub fn protobuf_descriptor_to_schema_with_policy(
     schema_name: &str,
     schema_data: &[u8],
     policy: PresencePolicy,
-) -> Vec<FieldDef> {
+) -> FieldDefs {
     let pool = DescriptorPool::decode(schema_data).unwrap_or_else(|e| {
         panic!("failed to decode protobuf descriptor set for '{schema_name}': {e}")
     });
@@ -39,10 +39,11 @@ pub fn protobuf_descriptor_to_schema_with_policy(
     message_fields_to_field_defs(&message_desc, policy)
 }
 
-fn message_fields_to_field_defs(desc: &MessageDescriptor, policy: PresencePolicy) -> Vec<FieldDef> {
+fn message_fields_to_field_defs(desc: &MessageDescriptor, policy: PresencePolicy) -> FieldDefs {
     desc.fields()
         .map(|f| field_descriptor_to_field_def(&f, policy))
-        .collect()
+        .collect::<Vec<_>>()
+        .into()
 }
 
 fn field_descriptor_to_field_def(fd: &FieldDescriptor, policy: PresencePolicy) -> FieldDef {

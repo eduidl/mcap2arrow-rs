@@ -16,11 +16,11 @@
 //! # Typical Flow
 //! ```rust
 //! use mcap2arrow_arrow::{arrow_value_rows_to_record_batch, field_defs_to_arrow_schema};
-//! use mcap2arrow_core::{DecodedMessage, FieldDef};
+//! use mcap2arrow_core::{DecodedMessage, FieldDefs};
 //!
-//! # let field_defs: Vec<FieldDef> = vec![];
+//! # let field_defs = FieldDefs::default();
 //! # let rows: Vec<DecodedMessage> = vec![];
-//! let body_schema = field_defs_to_arrow_schema(&field_defs);
+//! let body_schema = field_defs_to_arrow_schema(field_defs.as_slice());
 //! // rows must not be empty.
 //! if !rows.is_empty() {
 //!     let _batch = arrow_value_rows_to_record_batch(&body_schema, &rows);

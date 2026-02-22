@@ -5,7 +5,7 @@ use std::{collections::HashMap, fs, path::Path, sync::Arc};
 use arrow::{datatypes::SchemaRef, record_batch::RecordBatch};
 use mcap2arrow_arrow::{arrow_value_rows_to_record_batch, field_defs_to_arrow_schema};
 use mcap2arrow_core::{
-    DecodedMessage, EncodingKey, FieldDef, MessageDecoder, MessageEncoding, SchemaEncoding,
+    DecodedMessage, EncodingKey, FieldDefs, MessageDecoder, MessageEncoding, SchemaEncoding,
 };
 #[cfg(feature = "protobuf")]
 use mcap2arrow_protobuf::ProtobufDecoder;
@@ -29,7 +29,7 @@ struct TopicBatchContext<'a> {
     channel_id: u16,
     schema: Arc<mcap::Schema<'a>>,
     decoder: Arc<dyn MessageDecoder>,
-    field_defs: Vec<FieldDef>,
+    field_defs: FieldDefs,
     arrow_schema: SchemaRef,
 }
 
@@ -106,7 +106,7 @@ impl McapReader {
             });
         }
 
-        let arrow_schema = Arc::new(field_defs_to_arrow_schema(&field_defs));
+        let arrow_schema = Arc::new(field_defs_to_arrow_schema(field_defs.as_slice()));
 
         Ok(TopicBatchContext {
             channel_id: channel.id,
@@ -203,7 +203,7 @@ impl McapReader {
         &self,
         path: &Path,
         topic: &str,
-    ) -> Result<Vec<FieldDef>, McapReaderError> {
+    ) -> Result<FieldDefs, McapReaderError> {
         let summary = self.read_summary(path)?;
         let context = self.resolve_topic_batch_context(&summary, topic)?;
         Ok(context.field_defs)

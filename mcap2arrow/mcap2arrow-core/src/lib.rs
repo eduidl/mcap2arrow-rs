@@ -13,6 +13,6 @@ mod value;
 pub use decoder::{EncodingKey, MessageDecoder};
 pub use message::DecodedMessage;
 pub use message_encoding::MessageEncoding;
-pub use schema::{DataTypeDef, ElementDef, FieldDef};
+pub use schema::{format_field_defs, DataTypeDef, ElementDef, FieldDef, FieldDefs};
 pub use schema_encoding::SchemaEncoding;
 pub use value::Value;

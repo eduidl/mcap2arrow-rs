@@ -39,7 +39,9 @@ fn field_defs_to_arrow_schema_converts_nested_types() {
                 DataTypeDef::Map {
                     key: Box::new(ElementDef::new(DataTypeDef::String, false)),
                     value: Box::new(ElementDef::new(
-                        DataTypeDef::Struct(vec![FieldDef::new("v", DataTypeDef::I32, true)]),
+                        DataTypeDef::Struct(
+                            vec![FieldDef::new("v", DataTypeDef::I32, true)].into(),
+                        ),
                         true,
                     )),
                 },
@@ -49,10 +51,13 @@ fn field_defs_to_arrow_schema_converts_nested_types() {
         FieldDef {
             name: "st".to_string(),
             element: ElementDef::new(
-                DataTypeDef::Struct(vec![
+                DataTypeDef::Struct(
+                    vec![
                     FieldDef::new("c1", DataTypeDef::I32, false),
                     FieldDef::new("c2", DataTypeDef::String, true),
-                ]),
+                ]
+                    .into(),
+                ),
                 false,
             ),
         },

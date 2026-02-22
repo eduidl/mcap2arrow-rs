@@ -101,7 +101,7 @@ fn nested_message_becomes_struct() {
     assert_eq!(field.name, "inner");
     assert_eq!(
         field.element.data_type,
-        DataTypeDef::Struct(vec![FieldDef::new("x", DataTypeDef::I32, false)])
+        DataTypeDef::Struct(vec![FieldDef::new("x", DataTypeDef::I32, false)].into())
     );
     assert!(field.element.nullable);
 }

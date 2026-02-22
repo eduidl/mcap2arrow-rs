@@ -1,7 +1,7 @@
 //! Decoder trait and encoding key used to register pluggable message decoders.
 
 use crate::{
-    message_encoding::MessageEncoding, schema::FieldDef, schema_encoding::SchemaEncoding,
+    message_encoding::MessageEncoding, schema::FieldDefs, schema_encoding::SchemaEncoding,
     value::Value,
 };
 
@@ -44,5 +44,5 @@ pub trait MessageDecoder: Send + Sync {
     /// # Panics
     ///
     /// Panics if `schema_data` cannot be parsed.
-    fn derive_schema(&self, schema_name: &str, schema_data: &[u8]) -> Vec<FieldDef>;
+    fn derive_schema(&self, schema_name: &str, schema_data: &[u8]) -> FieldDefs;
 }
