@@ -27,10 +27,13 @@
 //! }
 //! ```
 pub mod arrow_convert;
+pub mod flatten;
 pub mod schema_convert;
 
 /// Re-export of [`arrow_convert::arrow_value_rows_to_record_batch`].
 pub use arrow_convert::arrow_value_rows_to_record_batch;
+/// Re-exports from [`flatten`].
+pub use flatten::{flatten_record_batch, ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy};
 /// Re-export of [`schema_convert::field_defs_to_arrow_schema`].
 pub use schema_convert::field_defs_to_arrow_schema;
 
