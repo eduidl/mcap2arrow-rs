@@ -122,9 +122,7 @@ impl McapReader {
         &self,
         path: &Path,
         topic: &str,
-        mut callback: impl FnMut(
-            RecordBatch,
-        ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>,
+        mut callback: impl FnMut(RecordBatch) -> Result<(), Box<dyn std::error::Error + Send + Sync>>,
     ) -> Result<(), McapReaderError> {
         fn flush_batch<F>(
             schema: &SchemaRef,
@@ -164,9 +162,11 @@ impl McapReader {
             rows.push(DecodedMessage {
                 log_time: message.log_time,
                 publish_time: message.publish_time,
-                value: context
-                    .decoder
-                    .decode(&context.schema.name, &context.schema.data, &message.data),
+                value: context.decoder.decode(
+                    &context.schema.name,
+                    &context.schema.data,
+                    &message.data,
+                ),
             });
 
             if rows.len() >= self.batch_size {
@@ -242,9 +242,11 @@ fn get_channel_from_summary<'a>(
     topic: &str,
 ) -> Result<&'a Arc<mcap::Channel<'a>>, McapReaderError> {
     let mut channels = summary.channels.values().filter(|ch| ch.topic == topic);
-    let first = channels.next().ok_or_else(|| McapReaderError::TopicNotFound {
-        topic: topic.to_string(),
-    })?;
+    let first = channels
+        .next()
+        .ok_or_else(|| McapReaderError::TopicNotFound {
+            topic: topic.to_string(),
+        })?;
     if let Some(other) = channels.next() {
         panic!(
             "multiple channels found for topic '{}' (channel ids: {}, {})",

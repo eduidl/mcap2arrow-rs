@@ -50,17 +50,19 @@ pub(super) fn make_builder(dt: &DataType, capacity: usize) -> Box<dyn ArrayBuild
             };
             let key_builder = make_builder(key_field.data_type(), capacity);
             let value_builder = make_builder(value_field.data_type(), capacity);
-            Box::new(MapBuilder::new(
-                Some(MapFieldNames {
-                    entry: entry_field.name().to_string(),
-                    key: key_field.name().to_string(),
-                    value: value_field.name().to_string(),
-                }),
-                key_builder,
-                value_builder,
+            Box::new(
+                MapBuilder::new(
+                    Some(MapFieldNames {
+                        entry: entry_field.name().to_string(),
+                        key: key_field.name().to_string(),
+                        value: value_field.name().to_string(),
+                    }),
+                    key_builder,
+                    value_builder,
+                )
+                .with_keys_field(key_field)
+                .with_values_field(value_field),
             )
-            .with_keys_field(key_field)
-            .with_values_field(value_field))
         }
         other => panic!("unsupported DataType for builder: {other:?}"),
     }

@@ -18,7 +18,10 @@ fn collect_i64_values(reader: &McapReader, path: &Path, topic: &str) -> Vec<i64>
     let mut values = Vec::new();
     reader
         .for_each_record_batch(path, topic, |batch| {
-            let value_idx = batch.schema().index_of("value").expect("missing 'value' column");
+            let value_idx = batch
+                .schema()
+                .index_of("value")
+                .expect("missing 'value' column");
             let values_col = batch
                 .column(value_idx)
                 .as_any()
@@ -109,7 +112,9 @@ fn builder_default_matches_new_without_decoders() {
 fn for_each_record_batch_without_decoder_returns_error() {
     let reader = McapReader::new();
     let err = reader
-        .for_each_record_batch(&fixture_path("with_summary.mcap"), "/decoded", |_batch| Ok(()))
+        .for_each_record_batch(&fixture_path("with_summary.mcap"), "/decoded", |_batch| {
+            Ok(())
+        })
         .unwrap_err();
     assert!(matches!(err, McapReaderError::NoDecoder { .. }));
 }
