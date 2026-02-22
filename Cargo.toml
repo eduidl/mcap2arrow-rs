@@ -1,5 +1,5 @@
 [workspace]
-members = ["mcap2arrow/*"]
+members = ["mcap2arrow/*", "tools/*"]
 resolver = "2"
 
 [workspace.package]
