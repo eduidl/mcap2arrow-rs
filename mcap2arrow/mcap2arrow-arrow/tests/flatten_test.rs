@@ -28,9 +28,33 @@ fn make_struct(children: Vec<(Field, ArrayRef)>) -> (Field, ArrayRef) {
 fn drop_all() -> FlattenPolicy {
     FlattenPolicy {
         list: ListPolicy::Drop,
+        list_flatten_fixed_size: 1,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
     }
+}
+
+#[test]
+fn parse_list_policy_from_str() {
+    assert_eq!("drop".parse::<ListPolicy>().unwrap(), ListPolicy::Drop);
+    assert_eq!("KEEP".parse::<ListPolicy>().unwrap(), ListPolicy::Keep);
+    assert_eq!(
+        "flatten-fixed".parse::<ListPolicy>().unwrap(),
+        ListPolicy::FlattenFixed
+    );
+    assert!("flatten-fixed:3".parse::<ListPolicy>().is_err());
+}
+
+#[test]
+fn parse_array_and_map_policy_from_str() {
+    assert_eq!("drop".parse::<ArrayPolicy>().unwrap(), ArrayPolicy::Drop);
+    assert_eq!(
+        "Flatten".parse::<ArrayPolicy>().unwrap(),
+        ArrayPolicy::Flatten
+    );
+    assert_eq!("keep".parse::<MapPolicy>().unwrap(), MapPolicy::Keep);
+    assert!("invalid".parse::<ArrayPolicy>().is_err());
+    assert!("invalid".parse::<MapPolicy>().is_err());
 }
 
 // A flat batch with no Struct columns passes through unchanged.
@@ -169,6 +193,7 @@ fn list_policy_keep() {
 
     let policy = FlattenPolicy {
         list: ListPolicy::Keep,
+        list_flatten_fixed_size: 1,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
     };
@@ -200,7 +225,8 @@ fn list_policy_flatten_fixed() {
     );
 
     let policy = FlattenPolicy {
-        list: ListPolicy::FlattenFixed(2),
+        list: ListPolicy::FlattenFixed,
+        list_flatten_fixed_size: 2,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
     };
@@ -212,8 +238,16 @@ fn list_policy_flatten_fixed() {
     assert_eq!(flat.schema().field(2).name(), "lst.1");
     assert!(dropped.is_empty());
 
-    let col0 = flat.column(1).as_any().downcast_ref::<Int32Array>().unwrap();
-    let col1 = flat.column(2).as_any().downcast_ref::<Int32Array>().unwrap();
+    let col0 = flat
+        .column(1)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    let col1 = flat
+        .column(2)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
     // Row 0: [1, 2] → col0=1, col1=2
     assert_eq!(col0.value(0), 1);
     assert_eq!(col1.value(0), 2);
@@ -246,6 +280,7 @@ fn array_policy_drop_and_keep() {
     // Keep
     let policy = FlattenPolicy {
         list: ListPolicy::Drop,
+        list_flatten_fixed_size: 1,
         array: ArrayPolicy::Keep,
         map: MapPolicy::Drop,
     };
@@ -274,6 +309,7 @@ fn array_policy_flatten() {
 
     let policy = FlattenPolicy {
         list: ListPolicy::Drop,
+        list_flatten_fixed_size: 1,
         array: ArrayPolicy::Flatten,
         map: MapPolicy::Drop,
     };
@@ -285,8 +321,16 @@ fn array_policy_flatten() {
     assert_eq!(flat.schema().field(2).name(), "fsl.1");
     assert!(dropped.is_empty());
 
-    let col0 = flat.column(1).as_any().downcast_ref::<Int32Array>().unwrap();
-    let col1 = flat.column(2).as_any().downcast_ref::<Int32Array>().unwrap();
+    let col0 = flat
+        .column(1)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    let col1 = flat
+        .column(2)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
     assert_eq!(col0.values(), &[1, 3]); // first element of each row
     assert_eq!(col1.values(), &[2, 4]); // second element of each row
 }
@@ -298,24 +342,21 @@ fn map_policy_drop_and_keep() {
     let key_field = Arc::new(Field::new("key", DataType::Utf8, false));
     let val_field = Arc::new(Field::new("value", DataType::Int32, true));
     let entry_fields = Fields::from(vec![key_field.clone(), val_field.clone()]);
-    let entry_field = Arc::new(Field::new("entries", DataType::Struct(entry_fields.clone()), false));
+    let entry_field = Arc::new(Field::new(
+        "entries",
+        DataType::Struct(entry_fields.clone()),
+        false,
+    ));
 
     let keys = Arc::new(StringArray::from(vec!["a"])) as ArrayRef;
     let vals = Arc::new(Int32Array::from(vec![1])) as ArrayRef;
-    let struct_arr = StructArray::from(vec![
-        (key_field, keys),
-        (val_field, vals),
-    ]);
+    let struct_arr = StructArray::from(vec![(key_field, keys), (val_field, vals)]);
     let offsets = OffsetBuffer::new(ScalarBuffer::from(vec![0i32, 1]));
     let map_array = MapArray::new(entry_field, offsets, struct_arr, None, false);
     let map_field = Field::new(
         "m",
         DataType::Map(
-            Arc::new(Field::new(
-                "entries",
-                DataType::Struct(entry_fields),
-                false,
-            )),
+            Arc::new(Field::new("entries", DataType::Struct(entry_fields), false)),
             false,
         ),
         false,
@@ -337,6 +378,7 @@ fn map_policy_drop_and_keep() {
     // Keep
     let policy = FlattenPolicy {
         list: ListPolicy::Drop,
+        list_flatten_fixed_size: 1,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Keep,
     };
@@ -392,6 +434,7 @@ fn struct_child_is_fsl_flatten() {
     let batch = make_batch(vec![sf], vec![struct_arr]);
     let policy = FlattenPolicy {
         list: ListPolicy::Drop,
+        list_flatten_fixed_size: 1,
         array: ArrayPolicy::Flatten,
         map: MapPolicy::Drop,
     };
@@ -402,8 +445,16 @@ fn struct_child_is_fsl_flatten() {
     assert_eq!(flat.schema().field(1).name(), "s.fsl.1");
     assert!(dropped.is_empty());
 
-    let col0 = flat.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
-    let col1 = flat.column(1).as_any().downcast_ref::<Int32Array>().unwrap();
+    let col0 = flat
+        .column(0)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    let col1 = flat
+        .column(1)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
     assert_eq!(col0.values(), &[1, 3]); // first element of each row
     assert_eq!(col1.values(), &[2, 4]); // second element of each row
 }
@@ -441,6 +492,7 @@ fn struct_child_is_map_keep() {
     let batch = make_batch(vec![sf], vec![struct_arr]);
     let policy = FlattenPolicy {
         list: ListPolicy::Drop,
+        list_flatten_fixed_size: 1,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Keep,
     };
@@ -453,7 +505,7 @@ fn struct_child_is_map_keep() {
 
 // ─── Nested: List<Struct> with FlattenFixed — struct leaves are emitted ───
 
-// lst: List<{x,y}> with FlattenFixed(2) → lst.0.x, lst.0.y, lst.1.x, lst.1.y.
+// lst: List<{x,y}> with FlattenFixed and size=2 → lst.0.x, lst.0.y, lst.1.x, lst.1.y.
 #[test]
 fn list_of_struct_flatten_fixed() {
     // Inner values: 4 struct elements laid out flat for 2 outer rows × 2 slots.
@@ -477,7 +529,8 @@ fn list_of_struct_flatten_fixed() {
         vec![Arc::new(list_array) as ArrayRef],
     );
     let policy = FlattenPolicy {
-        list: ListPolicy::FlattenFixed(2),
+        list: ListPolicy::FlattenFixed,
+        list_flatten_fixed_size: 2,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
     };
@@ -492,10 +545,26 @@ fn list_of_struct_flatten_fixed() {
 
     // Row 0: slot0={x:10,y:1}  slot1={x:20,y:2}
     // Row 1: slot0={x:30,y:3}  slot1={x:40,y:4}
-    let col_0x = flat.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
-    let col_0y = flat.column(1).as_any().downcast_ref::<Int32Array>().unwrap();
-    let col_1x = flat.column(2).as_any().downcast_ref::<Int32Array>().unwrap();
-    let col_1y = flat.column(3).as_any().downcast_ref::<Int32Array>().unwrap();
+    let col_0x = flat
+        .column(0)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    let col_0y = flat
+        .column(1)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    let col_1x = flat
+        .column(2)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    let col_1y = flat
+        .column(3)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
     assert_eq!(col_0x.values(), &[10, 30]);
     assert_eq!(col_0y.values(), &[1, 3]);
     assert_eq!(col_1x.values(), &[20, 40]);
@@ -525,6 +594,7 @@ fn fsl_of_struct_flatten() {
     let batch = make_batch(vec![fsl_field], vec![Arc::new(fsl) as ArrayRef]);
     let policy = FlattenPolicy {
         list: ListPolicy::Drop,
+        list_flatten_fixed_size: 1,
         array: ArrayPolicy::Flatten,
         map: MapPolicy::Drop,
     };
@@ -540,10 +610,26 @@ fn fsl_of_struct_flatten() {
     // expand_fixed_size_list: element i of row r → index r*size+i
     // i=0: row0→idx0={x:1,y:10}, row1→idx2={x:3,y:30}
     // i=1: row0→idx1={x:2,y:20}, row1→idx3={x:4,y:40}
-    let col_0x = flat.column(0).as_any().downcast_ref::<Int32Array>().unwrap();
-    let col_0y = flat.column(1).as_any().downcast_ref::<Int32Array>().unwrap();
-    let col_1x = flat.column(2).as_any().downcast_ref::<Int32Array>().unwrap();
-    let col_1y = flat.column(3).as_any().downcast_ref::<Int32Array>().unwrap();
+    let col_0x = flat
+        .column(0)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    let col_0y = flat
+        .column(1)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    let col_1x = flat
+        .column(2)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
+    let col_1y = flat
+        .column(3)
+        .as_any()
+        .downcast_ref::<Int32Array>()
+        .unwrap();
     assert_eq!(col_0x.values(), &[1, 3]);
     assert_eq!(col_0y.values(), &[10, 30]);
     assert_eq!(col_1x.values(), &[2, 4]);
@@ -597,7 +683,7 @@ fn sibling_structs() {
     assert!(dropped.is_empty());
 }
 
-// ─── Edge: FlattenFixed(0) silently removes the list without recording a drop ───
+// ─── Edge: FlattenFixed with size=0 silently removes the list without recording a drop ───
 
 // The column vanishes — it is neither emitted nor added to the dropped list.
 #[test]
@@ -618,7 +704,8 @@ fn flatten_fixed_zero() {
         ],
     );
     let policy = FlattenPolicy {
-        list: ListPolicy::FlattenFixed(0),
+        list: ListPolicy::FlattenFixed,
+        list_flatten_fixed_size: 0,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
     };

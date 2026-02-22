@@ -1,4 +1,5 @@
 use std::collections::{BTreeSet, HashSet};
+use std::str::FromStr;
 use std::sync::Arc;
 
 use arrow::array::{Array, ArrayRef, FixedSizeListArray, Int32Array, ListArray, StructArray};
@@ -27,7 +28,7 @@ impl CommonPostProcess {
         match policy {
             ListPolicy::Drop => CommonPostProcess::Drop,
             ListPolicy::Keep => CommonPostProcess::Keep,
-            ListPolicy::FlattenFixed(_) => CommonPostProcess::None,
+            ListPolicy::FlattenFixed => CommonPostProcess::None,
         }
     }
 
@@ -54,10 +55,26 @@ pub enum ListPolicy {
     Drop,
     /// Pass the column through unchanged (e.g. for Parquet output).
     Keep,
-    /// Expand the list to exactly `n` scalar columns named `{col}.0` …
-    /// `{col}.{n-1}`, padding short lists with nulls and truncating long ones.
-    /// The size must be supplied explicitly by the caller.
-    FlattenFixed(usize),
+    /// Expand the list to scalar columns named `{col}.0`, `{col}.1`, …
+    /// The number of generated columns is controlled by
+    /// [`FlattenPolicy::list_flatten_fixed_size`].
+    FlattenFixed,
+}
+
+impl FromStr for ListPolicy {
+    type Err = String;
+
+    fn from_str(raw: &str) -> Result<Self, Self::Err> {
+        let lower = raw.to_ascii_lowercase();
+        match lower.as_str() {
+            "drop" => Ok(Self::Drop),
+            "keep" => Ok(Self::Keep),
+            "flatten-fixed" | "flattenfixed" => Ok(Self::FlattenFixed),
+            _ => Err(format!(
+                "invalid list policy '{raw}' (expected: drop, keep, flatten-fixed)"
+            )),
+        }
+    }
 }
 
 /// Policy for [`DataType::FixedSizeList`] columns during [`flatten_record_batch`].
@@ -72,6 +89,21 @@ pub enum ArrayPolicy {
     Flatten,
 }
 
+impl FromStr for ArrayPolicy {
+    type Err = String;
+
+    fn from_str(raw: &str) -> Result<Self, Self::Err> {
+        match raw.to_ascii_lowercase().as_str() {
+            "drop" => Ok(Self::Drop),
+            "keep" => Ok(Self::Keep),
+            "flatten" => Ok(Self::Flatten),
+            _ => Err(format!(
+                "invalid array policy '{raw}' (expected: drop, keep, flatten)"
+            )),
+        }
+    }
+}
+
 /// Policy for [`DataType::Map`] columns during [`flatten_record_batch`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MapPolicy {
@@ -81,33 +113,26 @@ pub enum MapPolicy {
     Keep,
 }
 
+impl FromStr for MapPolicy {
+    type Err = String;
+
+    fn from_str(raw: &str) -> Result<Self, Self::Err> {
+        match raw.to_ascii_lowercase().as_str() {
+            "drop" => Ok(Self::Drop),
+            "keep" => Ok(Self::Keep),
+            _ => Err(format!("invalid map policy '{raw}' (expected: drop, keep)")),
+        }
+    }
+}
+
 /// Aggregate policy controlling how each compound type is handled during
 /// [`flatten_record_batch`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FlattenPolicy {
     pub list: ListPolicy,
+    pub list_flatten_fixed_size: usize,
     pub array: ArrayPolicy,
     pub map: MapPolicy,
-}
-
-impl FlattenPolicy {
-    /// Typical policy for CSV: drop variable-length types, flatten fixed-size arrays.
-    pub fn for_csv() -> Self {
-        Self {
-            list: ListPolicy::Drop,
-            array: ArrayPolicy::Flatten,
-            map: MapPolicy::Drop,
-        }
-    }
-
-    /// Typical policy for Parquet: pass all compound types through unchanged.
-    pub fn for_parquet() -> Self {
-        Self {
-            list: ListPolicy::Keep,
-            array: ArrayPolicy::Keep,
-            map: MapPolicy::Keep,
-        }
-    }
 }
 
 /// Accumulates the output of [`collect_columns`].
@@ -207,12 +232,14 @@ fn collect_columns(
             CommonPostProcess::None
         }
         DataType::List(_) => {
-            if let ListPolicy::FlattenFixed(n) = &policy.list {
+            if policy.list == ListPolicy::FlattenFixed {
                 let list_arr = col
                     .as_any()
                     .downcast_ref::<ListArray>()
                     .expect("DataType::List matches ListArray");
-                for (f, a) in expand_list_fixed(list_arr, path, *n, sep)? {
+                for (f, a) in
+                    expand_list_fixed(list_arr, path, policy.list_flatten_fixed_size, sep)?
+                {
                     collect_columns(&f, f.name(), &a, sep, policy, out)?;
                 }
             };
