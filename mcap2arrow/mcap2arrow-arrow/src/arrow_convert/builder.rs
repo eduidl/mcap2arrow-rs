@@ -1,10 +1,12 @@
-use arrow::array::{
-    ArrayBuilder, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
-    Float64Builder, Int16Builder, Int32Builder, Int64Builder, Int8Builder, ListBuilder, MapBuilder,
-    MapFieldNames, NullBuilder, StringBuilder, StructBuilder, TimestampNanosecondBuilder,
-    UInt16Builder, UInt32Builder, UInt64Builder, UInt8Builder,
+use arrow::{
+    array::{
+        ArrayBuilder, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
+        Float64Builder, Int16Builder, Int32Builder, Int64Builder, Int8Builder, ListBuilder,
+        MapBuilder, MapFieldNames, NullBuilder, StringBuilder, StructBuilder,
+        TimestampNanosecondBuilder, UInt16Builder, UInt32Builder, UInt64Builder, UInt8Builder,
+    },
+    datatypes::{DataType, Field, TimeUnit},
 };
-use arrow::datatypes::{DataType, Field, TimeUnit};
 
 pub(super) fn make_builder(dt: &DataType, capacity: usize) -> Box<dyn ArrayBuilder> {
     match dt {

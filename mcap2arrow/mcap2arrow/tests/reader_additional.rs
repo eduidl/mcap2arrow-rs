@@ -1,5 +1,7 @@
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use arrow::array::Int64Array;
 use mcap2arrow::{McapReader, McapReaderError};

@@ -1,9 +1,9 @@
 //! Decoder trait and encoding key used to register pluggable message decoders.
 
-use crate::message_encoding::MessageEncoding;
-use crate::schema::FieldDef;
-use crate::schema_encoding::SchemaEncoding;
-use crate::value::Value;
+use crate::{
+    message_encoding::MessageEncoding, schema::FieldDef, schema_encoding::SchemaEncoding,
+    value::Value,
+};
 
 /// Key identifying a (schema_encoding, message_encoding) pair.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

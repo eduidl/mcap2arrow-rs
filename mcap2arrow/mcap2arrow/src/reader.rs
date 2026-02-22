@@ -1,21 +1,17 @@
 //! MCAP file reader with pluggable decoder support.
 
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
-use std::sync::Arc;
+use std::{collections::HashMap, fs, path::Path, sync::Arc};
 
-use arrow::datatypes::SchemaRef;
-use arrow::record_batch::RecordBatch;
-use memmap2::Mmap;
-
-use crate::error::McapReaderError;
+use arrow::{datatypes::SchemaRef, record_batch::RecordBatch};
 use mcap2arrow_arrow::{arrow_value_rows_to_record_batch, field_defs_to_arrow_schema};
 use mcap2arrow_core::{
     DecodedMessage, EncodingKey, MessageDecoder, MessageEncoding, SchemaEncoding,
 };
 #[cfg(feature = "protobuf")]
 use mcap2arrow_protobuf::ProtobufDecoder;
+use memmap2::Mmap;
+
+use crate::error::McapReaderError;
 
 /// Reads an MCAP file and decodes messages using registered [`MessageDecoder`]s.
 pub struct McapReader {

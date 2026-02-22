@@ -1,12 +1,15 @@
 use std::sync::Arc;
 
-use arrow::array::{
-    Array, ArrayRef, FixedSizeListArray, Int32Array, ListArray, MapArray, StringArray, StructArray,
+use arrow::{
+    array::{
+        Array, ArrayRef, FixedSizeListArray, Int32Array, ListArray, MapArray, StringArray,
+        StructArray,
+    },
+    buffer::{NullBuffer, OffsetBuffer, ScalarBuffer},
+    datatypes::{DataType, Field, Fields, Schema},
+    error::ArrowError,
+    record_batch::RecordBatch,
 };
-use arrow::buffer::{NullBuffer, OffsetBuffer, ScalarBuffer};
-use arrow::datatypes::{DataType, Field, Fields, Schema};
-use arrow::error::ArrowError;
-use arrow::record_batch::RecordBatch;
 use mcap2arrow_arrow::{flatten_record_batch, ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy};
 
 fn make_batch(fields: Vec<Field>, arrays: Vec<ArrayRef>) -> RecordBatch {

@@ -1,12 +1,16 @@
-use std::collections::{BTreeSet, HashSet};
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{
+    collections::{BTreeSet, HashSet},
+    str::FromStr,
+    sync::Arc,
+};
 
-use arrow::array::{Array, ArrayRef, FixedSizeListArray, Int32Array, ListArray, StructArray};
-use arrow::compute::take;
-use arrow::datatypes::{DataType, Field, Schema};
-use arrow::error::ArrowError;
-use arrow::record_batch::RecordBatch;
+use arrow::{
+    array::{Array, ArrayRef, FixedSizeListArray, Int32Array, ListArray, StructArray},
+    compute::take,
+    datatypes::{DataType, Field, Schema},
+    error::ArrowError,
+    record_batch::RecordBatch,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CommonPostProcess {

@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
-use arrow::array::{
-    Array, FixedSizeListArray, Float32Array, Float64Array, Int32Array, ListArray, MapArray,
-    StringArray, StructArray, TimestampNanosecondArray,
+use arrow::{
+    array::{
+        Array, FixedSizeListArray, Float32Array, Float64Array, Int32Array, ListArray, MapArray,
+        StringArray, StructArray, TimestampNanosecondArray,
+    },
+    datatypes::{DataType, Field, Schema},
 };
-use arrow::datatypes::{DataType, Field, Schema};
 use mcap2arrow_arrow::arrow_value_rows_to_record_batch;
 use mcap2arrow_core::{DecodedMessage, Value};
 

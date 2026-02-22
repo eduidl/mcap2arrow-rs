@@ -9,9 +9,11 @@ mod scalar;
 
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, TimestampNanosecondArray};
-use arrow::datatypes::{DataType, Schema};
-use arrow::record_batch::RecordBatch;
+use arrow::{
+    array::{ArrayRef, TimestampNanosecondArray},
+    datatypes::{DataType, Schema},
+    record_batch::RecordBatch,
+};
 use mcap2arrow_core::{DecodedMessage, Value};
 
 /// Convert decoded rows to a RecordBatch.

@@ -13,12 +13,9 @@ mod schema;
 use mcap2arrow_core::{
     EncodingKey, FieldDef, MessageDecoder, MessageEncoding, SchemaEncoding, Value,
 };
-
 pub use policy::PresencePolicy;
-pub use proto_to_arrow::decode_protobuf_to_value;
-pub use proto_to_arrow::decode_protobuf_to_value_with_policy;
-pub use schema::protobuf_descriptor_to_schema;
-pub use schema::protobuf_descriptor_to_schema_with_policy;
+pub use proto_to_arrow::{decode_protobuf_to_value, decode_protobuf_to_value_with_policy};
+pub use schema::{protobuf_descriptor_to_schema, protobuf_descriptor_to_schema_with_policy};
 
 /// Stateless decoder that converts protobuf-encoded MCAP messages into
 /// [`Value`] / [`FieldDef`] via the [`MessageDecoder`] trait.
