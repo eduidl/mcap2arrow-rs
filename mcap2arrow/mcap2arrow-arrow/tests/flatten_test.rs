@@ -10,7 +10,9 @@ use arrow::{
     error::ArrowError,
     record_batch::RecordBatch,
 };
-use mcap2arrow_arrow::{flatten_record_batch, ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy};
+use mcap2arrow_arrow::{
+    flatten_record_batch, ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy,
+};
 
 fn make_batch(fields: Vec<Field>, arrays: Vec<ArrayRef>) -> RecordBatch {
     RecordBatch::try_new(Arc::new(Schema::new(fields)), arrays).unwrap()
@@ -34,6 +36,7 @@ fn drop_all() -> FlattenPolicy {
         list_flatten_fixed_size: 1,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
+        struct_: StructPolicy::Flatten,
     }
 }
 
@@ -112,6 +115,35 @@ fn struct_is_flattened() {
         .downcast_ref::<Int32Array>()
         .unwrap();
     assert_eq!(col_a.values(), &[10, 20]);
+}
+
+#[test]
+fn struct_policy_keep_keeps_struct_column() {
+    let (mut sf, struct_arr) = make_struct(vec![
+        (
+            Field::new("a", DataType::Int32, false),
+            Arc::new(Int32Array::from(vec![10, 20])) as ArrayRef,
+        ),
+        (
+            Field::new("b", DataType::Utf8, true),
+            Arc::new(StringArray::from(vec!["x", "y"])) as ArrayRef,
+        ),
+    ]);
+    sf = Field::new("s", sf.data_type().clone(), false);
+    let batch = make_batch(vec![sf], vec![struct_arr]);
+
+    let mut policy = drop_all();
+    policy.struct_ = StructPolicy::Keep;
+
+    let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
+
+    assert_eq!(flat.num_columns(), 1);
+    assert_eq!(flat.schema().field(0).name(), "s");
+    assert!(matches!(
+        flat.schema().field(0).data_type(),
+        DataType::Struct(_)
+    ));
+    assert!(dropped.is_empty());
 }
 
 // Deeply nested Structs are expanded recursively.
@@ -199,6 +231,7 @@ fn list_policy_keep() {
         list_flatten_fixed_size: 1,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
 
@@ -232,6 +265,7 @@ fn list_policy_flatten_fixed() {
         list_flatten_fixed_size: 2,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
 
@@ -286,6 +320,7 @@ fn array_policy_drop_and_keep() {
         list_flatten_fixed_size: 1,
         array: ArrayPolicy::Keep,
         map: MapPolicy::Drop,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
     assert_eq!(flat.num_columns(), 2);
@@ -315,6 +350,7 @@ fn array_policy_flatten() {
         list_flatten_fixed_size: 1,
         array: ArrayPolicy::Flatten,
         map: MapPolicy::Drop,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
 
@@ -384,6 +420,7 @@ fn map_policy_drop_and_keep() {
         list_flatten_fixed_size: 1,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Keep,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
     assert_eq!(flat.num_columns(), 2);
@@ -440,6 +477,7 @@ fn struct_child_is_fsl_flatten() {
         list_flatten_fixed_size: 1,
         array: ArrayPolicy::Flatten,
         map: MapPolicy::Drop,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
 
@@ -498,6 +536,7 @@ fn struct_child_is_map_keep() {
         list_flatten_fixed_size: 1,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Keep,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
 
@@ -536,6 +575,7 @@ fn list_of_struct_flatten_fixed() {
         list_flatten_fixed_size: 2,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
 
@@ -600,6 +640,7 @@ fn fsl_of_struct_flatten() {
         list_flatten_fixed_size: 1,
         array: ArrayPolicy::Flatten,
         map: MapPolicy::Drop,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
 
@@ -711,6 +752,7 @@ fn flatten_fixed_zero() {
         list_flatten_fixed_size: 0,
         array: ArrayPolicy::Drop,
         map: MapPolicy::Drop,
+        struct_: StructPolicy::Flatten,
     };
     let (flat, dropped) = flatten_record_batch(&batch, None, &policy).unwrap();
 

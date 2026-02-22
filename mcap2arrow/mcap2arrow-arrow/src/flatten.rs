@@ -20,10 +20,17 @@ enum CommonPostProcess {
 }
 
 impl CommonPostProcess {
-    fn apply(&self, path: &str, field: &Field, col: &ArrayRef, out: &mut Collector) {
+    fn apply(
+        &self,
+        path: &str,
+        field: &Field,
+        col: &ArrayRef,
+        effective_nullable: bool,
+        out: &mut Collector,
+    ) {
         match self {
             CommonPostProcess::Drop => out.drop(path),
-            CommonPostProcess::Keep => out.keep(path, field, col),
+            CommonPostProcess::Keep => out.keep(path, field.data_type(), effective_nullable, col),
             CommonPostProcess::None => (),
         }
     }
@@ -48,6 +55,13 @@ impl CommonPostProcess {
         match policy {
             MapPolicy::Drop => CommonPostProcess::Drop,
             MapPolicy::Keep => CommonPostProcess::Keep,
+        }
+    }
+
+    fn from_struct_policy(policy: &StructPolicy) -> Self {
+        match policy {
+            StructPolicy::Keep => CommonPostProcess::Keep,
+            StructPolicy::Flatten => CommonPostProcess::None,
         }
     }
 }
@@ -129,6 +143,15 @@ impl FromStr for MapPolicy {
     }
 }
 
+/// Policy for [`DataType::Struct`] columns during [`flatten_record_batch`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StructPolicy {
+    /// Pass the column through unchanged.
+    Keep,
+    /// Expand struct fields inline using `{parent}.{child}` paths.
+    Flatten,
+}
+
 /// Aggregate policy controlling how each compound type is handled during
 /// [`flatten_record_batch`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -137,6 +160,7 @@ pub struct FlattenPolicy {
     pub list_flatten_fixed_size: usize,
     pub array: ArrayPolicy,
     pub map: MapPolicy,
+    pub struct_: StructPolicy,
 }
 
 /// Accumulates the output of [`collect_columns`].
@@ -153,13 +177,9 @@ impl Collector {
         self.arrays.push(array);
     }
 
-    /// Keep `col` under a new field whose name is `path`, type and nullability
-    /// are taken from `field`.
-    fn keep(&mut self, path: &str, field: &Field, col: &ArrayRef) {
-        self.push(
-            Field::new(path, field.data_type().clone(), field.is_nullable()),
-            col.clone(),
-        );
+    /// Keep `col` under a new field whose name is `path`.
+    fn keep(&mut self, path: &str, data_type: &DataType, nullable: bool, col: &ArrayRef) {
+        self.push(Field::new(path, data_type.clone(), nullable), col.clone());
     }
 
     fn drop(&mut self, path: &str) {
@@ -168,8 +188,7 @@ impl Collector {
 }
 
 /// Flatten a [`RecordBatch`] by recursively walking the schema and applying
-/// the per-type [`FlattenPolicy`] to `List`, `FixedSizeList`, and `Map` columns,
-/// expanding `Struct` columns inline.
+/// the per-type [`FlattenPolicy`] to compound columns.
 ///
 /// `separator` controls the character inserted between path segments;
 /// defaults to `'.'` when `None`.
@@ -191,7 +210,15 @@ pub fn flatten_record_batch(
 
     for (i, field) in batch.schema().fields().iter().enumerate() {
         let col = batch.column(i).clone();
-        collect_columns(field, field.name(), &col, &sep, policy, &mut collector)?;
+        collect_columns(
+            field,
+            field.name(),
+            &col,
+            &sep,
+            policy,
+            false,
+            &mut collector,
+        )?;
     }
 
     // Collision check on the paths collected above.
@@ -212,28 +239,40 @@ pub fn flatten_record_batch(
 }
 
 /// Recursively collect output columns by applying `policy` to every node in
-/// the schema tree. `Struct` columns are expanded inline; the policy is applied
-/// to `List`, `FixedSizeList`, and `Map` columns at every nesting level.
+/// the schema tree. The policy is applied to `Struct`, `List`,
+/// `FixedSizeList`, and `Map` columns at every nesting level.
 fn collect_columns(
     field: &Field,
     path: &str,
     col: &ArrayRef,
     sep: &str,
     policy: &FlattenPolicy,
+    ancestor_nullable: bool,
     out: &mut Collector,
 ) -> Result<(), ArrowError> {
+    let effective_nullable = ancestor_nullable || field.is_nullable();
     let common_post_process: CommonPostProcess = match field.data_type() {
         DataType::Struct(child_fields) => {
-            let struct_arr = col
-                .as_any()
-                .downcast_ref::<StructArray>()
-                .expect("DataType::Struct matches StructArray");
-            for (i, child_field) in child_fields.iter().enumerate() {
-                let child_col = struct_arr.column(i).clone();
-                let child_path = format!("{path}{sep}{}", child_field.name());
-                collect_columns(child_field, &child_path, &child_col, sep, policy, out)?;
+            if policy.struct_ == StructPolicy::Flatten {
+                let struct_arr = col
+                    .as_any()
+                    .downcast_ref::<StructArray>()
+                    .expect("DataType::Struct matches StructArray");
+                for (i, child_field) in child_fields.iter().enumerate() {
+                    let child_col = struct_arr.column(i).clone();
+                    let child_path = format!("{path}{sep}{}", child_field.name());
+                    collect_columns(
+                        child_field,
+                        &child_path,
+                        &child_col,
+                        sep,
+                        policy,
+                        effective_nullable,
+                        out,
+                    )?;
+                }
             }
-            CommonPostProcess::None
+            CommonPostProcess::from_struct_policy(&policy.struct_)
         }
         DataType::List(_) => {
             if policy.list == ListPolicy::FlattenFixed {
@@ -244,7 +283,7 @@ fn collect_columns(
                 for (f, a) in
                     expand_list_fixed(list_arr, path, policy.list_flatten_fixed_size, sep)?
                 {
-                    collect_columns(&f, f.name(), &a, sep, policy, out)?;
+                    collect_columns(&f, f.name(), &a, sep, policy, effective_nullable, out)?;
                 }
             };
             CommonPostProcess::from_list_policy(&policy.list)
@@ -256,7 +295,7 @@ fn collect_columns(
                     .downcast_ref::<FixedSizeListArray>()
                     .expect("DataType::FixedSizeList matches FixedSizeListArray");
                 for (f, a) in expand_fixed_size_list(fsl_arr, path, sep)? {
-                    collect_columns(&f, f.name(), &a, sep, policy, out)?;
+                    collect_columns(&f, f.name(), &a, sep, policy, effective_nullable, out)?;
                 }
             };
             CommonPostProcess::from_array_policy(&policy.array)
@@ -265,7 +304,7 @@ fn collect_columns(
         _ => CommonPostProcess::Keep,
     };
 
-    common_post_process.apply(path, field, col, out);
+    common_post_process.apply(path, field, col, effective_nullable, out);
     Ok(())
 }
 
