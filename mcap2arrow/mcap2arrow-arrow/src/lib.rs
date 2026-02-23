@@ -20,7 +20,7 @@
 //!
 //! # let field_defs = FieldDefs::default();
 //! # let rows: Vec<DecodedMessage> = vec![];
-//! let body_schema = field_defs_to_arrow_schema(field_defs.as_slice());
+//! let body_schema = field_defs_to_arrow_schema(&field_defs);
 //! // rows must not be empty.
 //! if !rows.is_empty() {
 //!     let _batch = arrow_value_rows_to_record_batch(&body_schema, &rows);

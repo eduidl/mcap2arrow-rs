@@ -5,11 +5,31 @@ use std::sync::Arc;
 
 use mcap2arrow_core::{DecoderError, Value};
 use prost_reflect::{
-    DescriptorPool, DynamicMessage, EnumDescriptor, Kind, MapKey, MessageDescriptor,
-    Value as ProtoValue,
+    DynamicMessage, EnumDescriptor, Kind, MapKey, MessageDescriptor, Value as ProtoValue,
 };
 
-use crate::PresencePolicy;
+use crate::{schema::parse_message_descriptor, PresencePolicy};
+
+/// Decode a message payload using an already-resolved [`MessageDescriptor`].
+///
+/// Both the standalone public functions and [`ProtobufDecoder`] converge here;
+/// the decoder passes a cached descriptor so that `FileDescriptorSet` parsing
+/// is not repeated on every message.
+pub(crate) fn decode_from_descriptor(
+    schema_name: &str,
+    message_desc: &MessageDescriptor,
+    message_data: &[u8],
+    policy: PresencePolicy,
+) -> Result<Value, DecoderError> {
+    let dynamic_message =
+        DynamicMessage::decode(message_desc.clone(), message_data).map_err(|e| {
+            DecoderError::MessageDecode {
+                schema_name: schema_name.to_string(),
+                source: Box::new(e),
+            }
+        })?;
+    Ok(message_to_value(&dynamic_message, message_desc, policy))
+}
 
 /// Decode a serialized protobuf message into a [`Value`].
 ///
@@ -38,27 +58,8 @@ pub fn decode_protobuf_to_value_with_policy(
     message_data: &[u8],
     policy: PresencePolicy,
 ) -> Result<Value, DecoderError> {
-    let pool = DescriptorPool::decode(schema_data).map_err(|e| DecoderError::SchemaParse {
-        schema_name: schema_name.to_string(),
-        source: Box::new(e),
-    })?;
-
-    let message_desc =
-        pool.get_message_by_name(schema_name)
-            .ok_or_else(|| DecoderError::SchemaInvalid {
-                schema_name: schema_name.to_string(),
-                detail: format!("message descriptor not found: '{schema_name}'"),
-            })?;
-
-    let dynamic_message =
-        DynamicMessage::decode(message_desc.clone(), message_data).map_err(|e| {
-            DecoderError::MessageDecode {
-                schema_name: schema_name.to_string(),
-                source: Box::new(e),
-            }
-        })?;
-
-    Ok(message_to_value(&dynamic_message, &message_desc, policy))
+    let desc = parse_message_descriptor(schema_name, schema_data)?;
+    decode_from_descriptor(schema_name, &desc, message_data, policy)
 }
 
 fn message_to_value(

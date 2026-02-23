@@ -21,7 +21,19 @@ impl EncodingKey {
     }
 }
 
-/// Trait for decoding raw MCAP message bytes into [`Value`].
+/// Topic-local decoder built from MCAP schema metadata.
+///
+/// Implementations are created by [`MessageDecoder`] once per schema/topic and
+/// reused for all messages in that topic.
+pub trait TopicDecoder {
+    /// Decode a single message payload into a [`Value`].
+    fn decode(&self, message_data: &[u8]) -> Result<Value, DecoderError>;
+
+    /// Return the Arrow-independent schema for decoded values.
+    fn field_defs(&self) -> &FieldDefs;
+}
+
+/// Factory trait that builds topic-local decoders from MCAP schema metadata.
 ///
 /// Implementations are registered with `mcap2arrow::McapReader` and
 /// dispatched based on [`EncodingKey`].
@@ -29,23 +41,12 @@ pub trait MessageDecoder: Send + Sync {
     /// Returns the encoding pair this decoder handles.
     fn encoding_key(&self) -> EncodingKey;
 
-    /// Decode a single message into a [`Value`].
+    /// Build a topic-local decoder for the given MCAP schema.
     ///
-    /// Returns `Err` if `schema_data` or `message_data` cannot be decoded
-    /// (e.g., corrupted bytes, schema/message mismatch).
-    fn decode(
+    /// Returns `Err` if the schema cannot be parsed or is structurally invalid.
+    fn build_topic_decoder(
         &self,
         schema_name: &str,
         schema_data: &[u8],
-        message_data: &[u8],
-    ) -> Result<Value, DecoderError>;
-
-    /// Derive a schema from MCAP schema metadata.
-    ///
-    /// Returns `Err` if `schema_data` cannot be parsed or is structurally invalid.
-    fn derive_schema(
-        &self,
-        schema_name: &str,
-        schema_data: &[u8],
-    ) -> Result<FieldDefs, DecoderError>;
+    ) -> Result<Box<dyn TopicDecoder>, DecoderError>;
 }

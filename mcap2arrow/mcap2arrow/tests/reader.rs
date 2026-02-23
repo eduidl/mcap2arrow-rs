@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use mcap2arrow::McapReader;
 use mcap2arrow_core::{
     DataTypeDef, DecoderError, EncodingKey, FieldDef, FieldDefs, MessageDecoder, MessageEncoding,
-    SchemaEncoding, Value,
+    SchemaEncoding, TopicDecoder, Value,
 };
 
 fn fixture_path(name: &str) -> PathBuf {
@@ -14,27 +14,33 @@ fn fixture_path(name: &str) -> PathBuf {
 }
 
 struct TestJsonDecoder;
+struct TestJsonTopicDecoder {
+    field_defs: FieldDefs,
+}
 
 impl MessageDecoder for TestJsonDecoder {
     fn encoding_key(&self) -> EncodingKey {
         EncodingKey::new(SchemaEncoding::JsonSchema, MessageEncoding::Json)
     }
 
-    fn decode(
+    fn build_topic_decoder(
         &self,
         _schema_name: &str,
         _schema_data: &[u8],
-        _message_data: &[u8],
-    ) -> Result<Value, DecoderError> {
+    ) -> Result<Box<dyn TopicDecoder>, DecoderError> {
+        Ok(Box::new(TestJsonTopicDecoder {
+            field_defs: vec![FieldDef::new("value", DataTypeDef::I64, true)].into(),
+        }))
+    }
+}
+
+impl TopicDecoder for TestJsonTopicDecoder {
+    fn decode(&self, _message_data: &[u8]) -> Result<Value, DecoderError> {
         Ok(Value::Struct(vec![Value::I64(1)]))
     }
 
-    fn derive_schema(
-        &self,
-        _schema_name: &str,
-        _schema_data: &[u8],
-    ) -> Result<FieldDefs, DecoderError> {
-        Ok(vec![FieldDef::new("value", DataTypeDef::I64, true)].into())
+    fn field_defs(&self) -> &FieldDefs {
+        &self.field_defs
     }
 }
 

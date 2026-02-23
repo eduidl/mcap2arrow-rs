@@ -1,10 +1,10 @@
 use arrow::datatypes::DataType;
 use mcap2arrow_arrow::field_defs_to_arrow_schema;
-use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef};
+use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef, FieldDefs};
 
 #[test]
 fn field_defs_to_arrow_schema_converts_nested_types() {
-    let fields = vec![
+    let fields = FieldDefs::from(vec![
         FieldDef::new("n", DataTypeDef::Null, true),
         FieldDef::new("b", DataTypeDef::Bool, false),
         FieldDef::new("i8", DataTypeDef::I8, false),
@@ -61,7 +61,7 @@ fn field_defs_to_arrow_schema_converts_nested_types() {
                 false,
             ),
         },
-    ];
+    ]);
 
     let schema = field_defs_to_arrow_schema(&fields);
 

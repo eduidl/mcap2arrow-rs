@@ -1,14 +1,21 @@
 mod test_helpers;
 
 use mcap2arrow_core::{DataTypeDef, DecoderError, ElementDef, FieldDef};
-use mcap2arrow_protobuf::{
-    protobuf_descriptor_to_schema, protobuf_descriptor_to_schema_with_policy, PresencePolicy,
-};
+use mcap2arrow_protobuf::{message_fields_to_field_defs, parse_message_descriptor, PresencePolicy};
 use prost_types::{
     field_descriptor_proto::{Label, Type},
     DescriptorProto,
 };
 use test_helpers::*;
+
+fn derive_schema(
+    schema_name: &str,
+    schema_data: &[u8],
+    policy: PresencePolicy,
+) -> Result<mcap2arrow_core::FieldDefs, DecoderError> {
+    let desc = parse_message_descriptor(schema_name, schema_data)?;
+    message_fields_to_field_defs(schema_name, &desc, policy)
+}
 
 #[test]
 fn scalar_fields() {
@@ -34,7 +41,7 @@ fn scalar_fields() {
         ..Default::default()
     };
     let fds = build_fds("scalars.proto", vec![msg]);
-    let schema = protobuf_descriptor_to_schema("Scalars", &fds).unwrap();
+    let schema = derive_schema("Scalars", &fds, PresencePolicy::PresenceAware).unwrap();
 
     let expected = vec![
         ("f_double", DataTypeDef::F64),
@@ -70,7 +77,7 @@ fn repeated_field_becomes_list() {
         ..Default::default()
     };
     let fds = build_fds("list.proto", vec![msg]);
-    let schema = protobuf_descriptor_to_schema("WithList", &fds).unwrap();
+    let schema = derive_schema("WithList", &fds, PresencePolicy::PresenceAware).unwrap();
 
     assert_eq!(schema.len(), 1);
     let field = &schema[0];
@@ -94,7 +101,7 @@ fn nested_message_becomes_struct() {
         ..Default::default()
     };
     let fds = build_fds("nested.proto", vec![inner, outer]);
-    let schema = protobuf_descriptor_to_schema("Outer", &fds).unwrap();
+    let schema = derive_schema("Outer", &fds, PresencePolicy::PresenceAware).unwrap();
 
     assert_eq!(schema.len(), 1);
     let field = &schema[0];
@@ -115,7 +122,7 @@ fn enum_field_becomes_string() {
         ..Default::default()
     };
     let fds = build_fds_with_enums("enum.proto", vec![msg], vec![color_enum]);
-    let schema = protobuf_descriptor_to_schema("WithEnum", &fds).unwrap();
+    let schema = derive_schema("WithEnum", &fds, PresencePolicy::PresenceAware).unwrap();
 
     assert_eq!(schema.len(), 1);
     assert_eq!(schema[0].name, "color");
@@ -137,7 +144,7 @@ fn map_field_becomes_map_type() {
         ..Default::default()
     };
     let fds = build_fds("map.proto", vec![msg]);
-    let schema = protobuf_descriptor_to_schema("WithMap", &fds).unwrap();
+    let schema = derive_schema("WithMap", &fds, PresencePolicy::PresenceAware).unwrap();
 
     assert_eq!(schema.len(), 1);
     let field = &schema[0];
@@ -159,14 +166,14 @@ fn unknown_message_name_returns_error() {
         ..Default::default()
     };
     let fds = build_fds("test.proto", vec![msg]);
-    let err = protobuf_descriptor_to_schema("DoesNotExist", &fds).unwrap_err();
+    let err = derive_schema("DoesNotExist", &fds, PresencePolicy::PresenceAware).unwrap_err();
     assert!(matches!(err, DecoderError::SchemaInvalid { .. }));
     assert!(err.to_string().contains("DoesNotExist"));
 }
 
 #[test]
 fn invalid_schema_data_returns_error() {
-    let err = protobuf_descriptor_to_schema("Foo", &[0xff, 0xff, 0xff]).unwrap_err();
+    let err = derive_schema("Foo", &[0xff, 0xff, 0xff], PresencePolicy::PresenceAware).unwrap_err();
     assert!(matches!(err, DecoderError::SchemaParse { .. }));
 }
 
@@ -180,7 +187,7 @@ fn proto3_optional_is_nullable_in_presence_aware_policy() {
     };
     let fds = build_fds("optional.proto", vec![msg]);
 
-    let schema = protobuf_descriptor_to_schema("WithOptional", &fds).unwrap();
+    let schema = derive_schema("WithOptional", &fds, PresencePolicy::PresenceAware).unwrap();
     assert_eq!(schema.len(), 1);
     assert_eq!(schema[0].name, "count");
     assert!(schema[0].element.nullable);
@@ -195,9 +202,7 @@ fn legacy_policy_fields_are_not_nullable() {
     };
     let fds = build_fds("legacy.proto", vec![msg]);
 
-    let schema =
-        protobuf_descriptor_to_schema_with_policy("Scalars", &fds, PresencePolicy::AlwaysDefault)
-            .unwrap();
+    let schema = derive_schema("Scalars", &fds, PresencePolicy::AlwaysDefault).unwrap();
     assert_eq!(schema.len(), 1);
     assert!(!schema[0].element.nullable);
 }

@@ -7,7 +7,7 @@ use arrow::array::Int64Array;
 use mcap2arrow::{McapReader, McapReaderError};
 use mcap2arrow_core::{
     DataTypeDef, DecoderError, EncodingKey, FieldDef, FieldDefs, MessageDecoder, MessageEncoding,
-    SchemaEncoding, Value,
+    SchemaEncoding, TopicDecoder, Value,
 };
 
 fn fixture_path(name: &str) -> PathBuf {
@@ -42,27 +42,26 @@ fn collect_i64_values(reader: &McapReader, path: &Path, topic: &str) -> Vec<i64>
 
 struct TestJsonDecoder;
 struct OverriddenJsonDecoder;
+struct TestJsonTopicDecoder {
+    field_defs: FieldDefs,
+}
+struct OverriddenJsonTopicDecoder {
+    field_defs: FieldDefs,
+}
 
 impl MessageDecoder for TestJsonDecoder {
     fn encoding_key(&self) -> EncodingKey {
         EncodingKey::new(SchemaEncoding::JsonSchema, MessageEncoding::Json)
     }
 
-    fn decode(
+    fn build_topic_decoder(
         &self,
         _schema_name: &str,
         _schema_data: &[u8],
-        _message_data: &[u8],
-    ) -> Result<Value, DecoderError> {
-        Ok(Value::Struct(vec![Value::I64(1)]))
-    }
-
-    fn derive_schema(
-        &self,
-        _schema_name: &str,
-        _schema_data: &[u8],
-    ) -> Result<FieldDefs, DecoderError> {
-        Ok(vec![FieldDef::new("value", DataTypeDef::I64, true)].into())
+    ) -> Result<Box<dyn TopicDecoder>, DecoderError> {
+        Ok(Box::new(TestJsonTopicDecoder {
+            field_defs: vec![FieldDef::new("value", DataTypeDef::I64, true)].into(),
+        }))
     }
 }
 
@@ -71,21 +70,34 @@ impl MessageDecoder for OverriddenJsonDecoder {
         EncodingKey::new(SchemaEncoding::JsonSchema, MessageEncoding::Json)
     }
 
-    fn decode(
+    fn build_topic_decoder(
         &self,
         _schema_name: &str,
         _schema_data: &[u8],
-        _message_data: &[u8],
-    ) -> Result<Value, DecoderError> {
+    ) -> Result<Box<dyn TopicDecoder>, DecoderError> {
+        Ok(Box::new(OverriddenJsonTopicDecoder {
+            field_defs: vec![FieldDef::new("value", DataTypeDef::I64, true)].into(),
+        }))
+    }
+}
+
+impl TopicDecoder for TestJsonTopicDecoder {
+    fn decode(&self, _message_data: &[u8]) -> Result<Value, DecoderError> {
+        Ok(Value::Struct(vec![Value::I64(1)]))
+    }
+
+    fn field_defs(&self) -> &FieldDefs {
+        &self.field_defs
+    }
+}
+
+impl TopicDecoder for OverriddenJsonTopicDecoder {
+    fn decode(&self, _message_data: &[u8]) -> Result<Value, DecoderError> {
         Ok(Value::Struct(vec![Value::I64(2)]))
     }
 
-    fn derive_schema(
-        &self,
-        _schema_name: &str,
-        _schema_data: &[u8],
-    ) -> Result<FieldDefs, DecoderError> {
-        Ok(vec![FieldDef::new("value", DataTypeDef::I64, true)].into())
+    fn field_defs(&self) -> &FieldDefs {
+        &self.field_defs
     }
 }
 

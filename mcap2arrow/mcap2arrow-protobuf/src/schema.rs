@@ -5,43 +5,27 @@ use prost_reflect::{DescriptorPool, FieldDescriptor, Kind, MessageDescriptor};
 
 use crate::PresencePolicy;
 
-/// Derive an Arrow-independent schema ([`FieldDefs`]) from the given
-/// protobuf `FileDescriptorSet` bytes.
+/// Parse `schema_data` (a serialized `google.protobuf.FileDescriptorSet`) and
+/// look up the [`MessageDescriptor`] for `schema_name`.
 ///
-/// `schema_name` is the fully-qualified protobuf message name
-/// (e.g. `"my.package.MyMessage"`).  `schema_data` must be a valid
-/// serialized `google.protobuf.FileDescriptorSet`.
-pub fn protobuf_descriptor_to_schema(
+/// [`ProtobufDecoder`] and helper APIs converge here.
+pub fn parse_message_descriptor(
     schema_name: &str,
     schema_data: &[u8],
-) -> Result<FieldDefs, DecoderError> {
-    protobuf_descriptor_to_schema_with_policy(
-        schema_name,
-        schema_data,
-        PresencePolicy::PresenceAware,
-    )
-}
-
-/// Derive an Arrow-independent schema with a presence policy.
-pub fn protobuf_descriptor_to_schema_with_policy(
-    schema_name: &str,
-    schema_data: &[u8],
-    policy: PresencePolicy,
-) -> Result<FieldDefs, DecoderError> {
+) -> Result<MessageDescriptor, DecoderError> {
     let pool = DescriptorPool::decode(schema_data).map_err(|e| DecoderError::SchemaParse {
         schema_name: schema_name.to_string(),
         source: Box::new(e),
     })?;
-    let message_desc: MessageDescriptor =
-        pool.get_message_by_name(schema_name)
-            .ok_or_else(|| DecoderError::SchemaInvalid {
-                schema_name: schema_name.to_string(),
-                detail: format!("message descriptor not found: '{schema_name}'"),
-            })?;
-    message_fields_to_field_defs(schema_name, &message_desc, policy)
+    pool.get_message_by_name(schema_name)
+        .ok_or_else(|| DecoderError::SchemaInvalid {
+            schema_name: schema_name.to_string(),
+            detail: format!("message descriptor not found: '{schema_name}'"),
+        })
 }
 
-fn message_fields_to_field_defs(
+/// Derive [`FieldDefs`] from an already-resolved [`MessageDescriptor`].
+pub fn message_fields_to_field_defs(
     schema_name: &str,
     desc: &MessageDescriptor,
     policy: PresencePolicy,

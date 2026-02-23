@@ -18,12 +18,12 @@ pub enum McapReaderError {
     SummaryNotAvailable { path: String },
 
     /// The MCAP summary section has no statistics record.
-    #[error("MCAP summary stats required in {path}")]
-    StatsRequired { path: String },
+    #[error("MCAP summary stats not available in {path}")]
+    StatsNotAvailable { path: String },
 
     /// A channel that was about to be decoded has no schema attached.
-    #[error("schema required for topic '{topic}' (channel id {channel_id})")]
-    SchemaRequired { topic: String, channel_id: u16 },
+    #[error("schema not available for topic '{topic}' (channel id {channel_id})")]
+    SchemaNotAvailable { topic: String, channel_id: u16 },
 
     /// The requested topic was not found in the MCAP file.
     #[error("topic '{topic}' not found")]

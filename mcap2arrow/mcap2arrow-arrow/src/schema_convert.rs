@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
-use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef};
+use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef, FieldDefs};
 
 // ---------------------------------------------------------------------------
 // Convert FieldDef schema IR to Arrow schema (without timestamp prefix)
@@ -11,7 +11,7 @@ use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef};
 ///
 /// The input is expected to represent message body fields only. Timestamp
 /// system columns are not included in the returned schema.
-pub fn field_defs_to_arrow_schema(fields: &[FieldDef]) -> Schema {
+pub fn field_defs_to_arrow_schema(fields: &FieldDefs) -> Schema {
     let arrow_fields: Vec<Field> = fields.iter().map(field_def_to_arrow_field).collect();
     Schema::new(arrow_fields)
 }

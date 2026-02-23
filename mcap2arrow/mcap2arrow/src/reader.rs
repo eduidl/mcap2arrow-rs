@@ -6,6 +6,7 @@ use arrow::{datatypes::SchemaRef, record_batch::RecordBatch};
 use mcap2arrow_arrow::{arrow_value_rows_to_record_batch, field_defs_to_arrow_schema};
 use mcap2arrow_core::{
     DecodedMessage, EncodingKey, FieldDefs, MessageDecoder, MessageEncoding, SchemaEncoding,
+    TopicDecoder,
 };
 #[cfg(feature = "protobuf")]
 use mcap2arrow_protobuf::ProtobufDecoder;
@@ -25,10 +26,9 @@ pub struct McapReaderBuilder {
     batch_size: usize,
 }
 
-struct TopicBatchContext<'a> {
+struct TopicBatchContext {
     channel_id: u16,
-    schema: Arc<mcap::Schema<'a>>,
-    decoder: Arc<dyn MessageDecoder>,
+    decoder: Box<dyn TopicDecoder>,
     field_defs: FieldDefs,
     arrow_schema: SchemaRef,
 }
@@ -87,22 +87,23 @@ impl McapReader {
             })
     }
 
-    fn resolve_topic_batch_context<'a>(
-        &'a self,
-        summary: &'a mcap::read::Summary,
+    fn resolve_topic_batch_context(
+        &self,
+        summary: &mcap::read::Summary,
         topic: &str,
-    ) -> Result<TopicBatchContext<'a>, McapReaderError> {
+    ) -> Result<TopicBatchContext, McapReaderError> {
         let channel = get_channel_from_summary(summary, topic)?;
         let schema = Arc::clone(get_schema_from_channel(channel)?);
         let schema_enc = SchemaEncoding::from(schema.encoding.as_str());
         let message_enc = MessageEncoding::from(channel.message_encoding.as_str());
         let decoder = Arc::clone(self.find_decoder(&channel.topic, &schema_enc, &message_enc)?);
-        let field_defs = decoder
-            .derive_schema(&schema.name, &schema.data)
+        let topic_decoder = decoder
+            .build_topic_decoder(&schema.name, &schema.data)
             .map_err(|e| McapReaderError::SchemaDerivationFailed {
                 topic: topic.to_string(),
                 source: e,
             })?;
+        let field_defs = topic_decoder.field_defs().clone();
 
         if field_defs.is_empty() {
             return Err(McapReaderError::EmptyDerivedSchema {
@@ -111,12 +112,11 @@ impl McapReader {
             });
         }
 
-        let arrow_schema = Arc::new(field_defs_to_arrow_schema(field_defs.as_slice()));
+        let arrow_schema = Arc::new(field_defs_to_arrow_schema(&field_defs));
 
         Ok(TopicBatchContext {
             channel_id: channel.id,
-            schema,
-            decoder,
+            decoder: topic_decoder,
             field_defs,
             arrow_schema,
         })
@@ -158,13 +158,12 @@ impl McapReader {
                 continue;
             }
 
-            let value = context
-                .decoder
-                .decode(&context.schema.name, &context.schema.data, &message.data)
-                .map_err(|e| McapReaderError::MessageDecodeFailed {
+            let value = context.decoder.decode(&message.data).map_err(|e| {
+                McapReaderError::MessageDecodeFailed {
                     topic: topic.to_string(),
                     source: e,
-                })?;
+                }
+            })?;
 
             rows.push(DecodedMessage {
                 log_time: message.log_time,
@@ -190,7 +189,7 @@ impl McapReader {
         let stats = summary
             .stats
             .as_ref()
-            .ok_or_else(|| McapReaderError::StatsRequired {
+            .ok_or_else(|| McapReaderError::StatsNotAvailable {
                 path: path.display().to_string(),
             })?;
 
@@ -271,7 +270,7 @@ fn get_schema_from_channel<'a>(
     channel
         .schema
         .as_ref()
-        .ok_or_else(|| McapReaderError::SchemaRequired {
+        .ok_or_else(|| McapReaderError::SchemaNotAvailable {
             topic: channel.topic.clone(),
             channel_id: channel.id,
         })

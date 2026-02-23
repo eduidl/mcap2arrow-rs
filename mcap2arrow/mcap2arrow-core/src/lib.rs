@@ -11,7 +11,7 @@ mod schema;
 mod schema_encoding;
 mod value;
 
-pub use decoder::{EncodingKey, MessageDecoder};
+pub use decoder::{EncodingKey, MessageDecoder, TopicDecoder};
 pub use error::DecoderError;
 pub use message::DecodedMessage;
 pub use message_encoding::MessageEncoding;
