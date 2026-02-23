@@ -97,7 +97,12 @@ impl McapReader {
         let schema_enc = SchemaEncoding::from(schema.encoding.as_str());
         let message_enc = MessageEncoding::from(channel.message_encoding.as_str());
         let decoder = Arc::clone(self.find_decoder(&channel.topic, &schema_enc, &message_enc)?);
-        let field_defs = decoder.derive_schema(&schema.name, &schema.data);
+        let field_defs = decoder
+            .derive_schema(&schema.name, &schema.data)
+            .map_err(|e| McapReaderError::SchemaDerivationFailed {
+                topic: topic.to_string(),
+                source: e,
+            })?;
 
         if field_defs.is_empty() {
             return Err(McapReaderError::EmptyDerivedSchema {
@@ -149,24 +154,22 @@ impl McapReader {
         for message in mcap::MessageStream::new(&mmap)? {
             let message = message?;
             let channel = &message.channel;
-            if channel.topic != topic {
+            if channel.id != context.channel_id {
                 continue;
             }
-            if channel.id != context.channel_id {
-                panic!(
-                    "multiple channels found for topic '{}' (expected channel id {}, got {})",
-                    topic, context.channel_id, channel.id
-                );
-            }
+
+            let value = context
+                .decoder
+                .decode(&context.schema.name, &context.schema.data, &message.data)
+                .map_err(|e| McapReaderError::MessageDecodeFailed {
+                    topic: topic.to_string(),
+                    source: e,
+                })?;
 
             rows.push(DecodedMessage {
                 log_time: message.log_time,
                 publish_time: message.publish_time,
-                value: context.decoder.decode(
-                    &context.schema.name,
-                    &context.schema.data,
-                    &message.data,
-                ),
+                value,
             });
 
             if rows.len() >= self.batch_size {
@@ -199,11 +202,7 @@ impl McapReader {
     }
 
     /// Derive and return schema IR (`FieldDef`) for a topic without reading message payloads.
-    pub fn topic_field_defs(
-        &self,
-        path: &Path,
-        topic: &str,
-    ) -> Result<FieldDefs, McapReaderError> {
+    pub fn topic_field_defs(&self, path: &Path, topic: &str) -> Result<FieldDefs, McapReaderError> {
         let summary = self.read_summary(path)?;
         let context = self.resolve_topic_batch_context(&summary, topic)?;
         Ok(context.field_defs)
@@ -258,11 +257,10 @@ fn get_channel_from_summary<'a>(
         .ok_or_else(|| McapReaderError::TopicNotFound {
             topic: topic.to_string(),
         })?;
-    if let Some(other) = channels.next() {
-        panic!(
-            "multiple channels found for topic '{}' (channel ids: {}, {})",
-            topic, first.id, other.id
-        );
+    if channels.next().is_some() {
+        return Err(McapReaderError::MultipleChannels {
+            topic: topic.to_string(),
+        });
     }
     Ok(first)
 }

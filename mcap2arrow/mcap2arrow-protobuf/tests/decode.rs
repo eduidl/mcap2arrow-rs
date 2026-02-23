@@ -1,6 +1,6 @@
 mod test_helpers;
 
-use mcap2arrow_core::Value;
+use mcap2arrow_core::{DecoderError, Value};
 use mcap2arrow_protobuf::{
     decode_protobuf_to_value, decode_protobuf_to_value_with_policy, PresencePolicy,
 };
@@ -62,7 +62,7 @@ fn decode_scalar_fields() {
     );
 
     let wire = encode_dynamic(&dm);
-    let value = decode_protobuf_to_value("Scalars", &fds, &wire);
+    let value = decode_protobuf_to_value("Scalars", &fds, &wire).unwrap();
 
     let Value::Struct(fields) = value else {
         panic!("expected Struct, got {value:?}");
@@ -101,7 +101,7 @@ fn decode_default_values() {
     let fds = build_fds("defaults.proto", vec![msg]);
 
     // Empty message (no fields set) → all defaults.
-    let value = decode_protobuf_to_value("Defaults", &fds, &[]);
+    let value = decode_protobuf_to_value("Defaults", &fds, &[]).unwrap();
     let Value::Struct(fields) = value else {
         panic!("expected Struct");
     };
@@ -136,7 +136,7 @@ fn decode_nested_message() {
     outer_dm.set_field_by_name("inner", prost_reflect::Value::Message(inner_dm));
 
     let wire = encode_dynamic(&outer_dm);
-    let value = decode_protobuf_to_value("Outer", &fds, &wire);
+    let value = decode_protobuf_to_value("Outer", &fds, &wire).unwrap();
 
     let Value::Struct(outer_fields) = value else {
         panic!("expected Struct");
@@ -168,7 +168,7 @@ fn decode_repeated_field() {
     );
 
     let wire = encode_dynamic(&dm);
-    let value = decode_protobuf_to_value("WithList", &fds, &wire);
+    let value = decode_protobuf_to_value("WithList", &fds, &wire).unwrap();
 
     let Value::Struct(fields) = value else {
         panic!("expected Struct");
@@ -197,7 +197,7 @@ fn decode_enum_field() {
     dm.set_field_by_name("color", prost_reflect::Value::EnumNumber(2));
 
     let wire = encode_dynamic(&dm);
-    let value = decode_protobuf_to_value("WithEnum", &fds, &wire);
+    let value = decode_protobuf_to_value("WithEnum", &fds, &wire).unwrap();
 
     let Value::Struct(fields) = value else {
         panic!("expected Struct");
@@ -224,7 +224,7 @@ fn decode_unknown_enum_value_falls_back_to_number() {
     dm.set_field_by_name("color", prost_reflect::Value::EnumNumber(999));
 
     let wire = encode_dynamic(&dm);
-    let value = decode_protobuf_to_value("WithEnum", &fds, &wire);
+    let value = decode_protobuf_to_value("WithEnum", &fds, &wire).unwrap();
 
     let Value::Struct(fields) = value else {
         panic!("expected Struct");
@@ -270,7 +270,7 @@ fn decode_map_field() {
     dm.set_field_by_name("labels", map_val);
 
     let wire = encode_dynamic(&dm);
-    let value = decode_protobuf_to_value("WithMap", &fds, &wire);
+    let value = decode_protobuf_to_value("WithMap", &fds, &wire).unwrap();
 
     let Value::Struct(fields) = value else {
         panic!("expected Struct");
@@ -300,21 +300,22 @@ fn decode_map_field() {
 }
 
 #[test]
-#[should_panic(expected = "protobuf message descriptor not found")]
-fn decode_unknown_message_panics() {
+fn decode_unknown_message_returns_error() {
     let msg = DescriptorProto {
         name: Some("Exists".to_string()),
         field: vec![scalar_field("x", 1, Type::Int32)],
         ..Default::default()
     };
     let fds = build_fds("test.proto", vec![msg]);
-    let _ = decode_protobuf_to_value("NoSuchMessage", &fds, &[]);
+    let err = decode_protobuf_to_value("NoSuchMessage", &fds, &[]).unwrap_err();
+    assert!(matches!(err, DecoderError::SchemaInvalid { .. }));
+    assert!(err.to_string().contains("NoSuchMessage"));
 }
 
 #[test]
-#[should_panic(expected = "failed to decode protobuf descriptor set")]
-fn decode_invalid_schema_data_panics() {
-    let _ = decode_protobuf_to_value("Foo", &[0xff, 0xff], &[]);
+fn decode_invalid_schema_data_returns_error() {
+    let err = decode_protobuf_to_value("Foo", &[0xff, 0xff], &[]).unwrap_err();
+    assert!(matches!(err, DecoderError::SchemaParse { .. }));
 }
 
 #[test]
@@ -327,7 +328,7 @@ fn decode_proto3_optional_missing_is_null_by_default() {
     };
     let fds = build_fds("optional.proto", vec![msg]);
 
-    let value = decode_protobuf_to_value("WithOptional", &fds, &[]);
+    let value = decode_protobuf_to_value("WithOptional", &fds, &[]).unwrap();
     let Value::Struct(fields) = value else {
         panic!("expected Struct");
     };
@@ -349,7 +350,8 @@ fn decode_proto3_optional_missing_is_default_in_legacy_policy() {
         &fds,
         &[],
         PresencePolicy::AlwaysDefault,
-    );
+    )
+    .unwrap();
     let Value::Struct(fields) = value else {
         panic!("expected Struct");
     };

@@ -1,5 +1,7 @@
 //! Error types for the MCAP reader.
 
+use mcap2arrow_core::DecoderError;
+
 /// Errors produced by [`McapReader`](crate::McapReader).
 #[derive(Debug, thiserror::Error)]
 pub enum McapReaderError {
@@ -39,6 +41,26 @@ pub enum McapReaderError {
     /// A decoder-derived schema had no fields and cannot be converted to Arrow.
     #[error("failed to derive schema for topic '{topic}' (schema: '{schema_name}')")]
     EmptyDerivedSchema { topic: String, schema_name: String },
+
+    /// Multiple channels found for the same topic in the MCAP file.
+    #[error("multiple channels found for topic '{topic}'")]
+    MultipleChannels { topic: String },
+
+    /// Decoder failed to derive schema from MCAP schema data.
+    #[error("schema derivation failed for topic '{topic}': {source}")]
+    SchemaDerivationFailed {
+        topic: String,
+        #[source]
+        source: DecoderError,
+    },
+
+    /// Decoder failed to decode a message payload.
+    #[error("message decode failed for topic '{topic}': {source}")]
+    MessageDecodeFailed {
+        topic: String,
+        #[source]
+        source: DecoderError,
+    },
 
     /// An error returned by the user-supplied callback in
     /// [`McapReader::for_each_record_batch`](crate::McapReader::for_each_record_batch).

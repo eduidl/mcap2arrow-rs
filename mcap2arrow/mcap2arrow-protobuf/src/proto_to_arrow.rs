@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use mcap2arrow_core::Value;
+use mcap2arrow_core::{DecoderError, Value};
 use prost_reflect::{
     DescriptorPool, DynamicMessage, EnumDescriptor, Kind, MapKey, MessageDescriptor,
     Value as ProtoValue,
@@ -17,17 +17,11 @@ use crate::PresencePolicy;
 /// `schema_data` must be a valid serialized
 /// `google.protobuf.FileDescriptorSet`.  `message_data` is the
 /// wire-format encoded protobuf message.
-///
-/// # Panics
-///
-/// Panics if the descriptor set cannot be decoded, the message descriptor
-/// does not exist in the descriptor set, or the wire-format message cannot
-/// be decoded.
 pub fn decode_protobuf_to_value(
     schema_name: &str,
     schema_data: &[u8],
     message_data: &[u8],
-) -> Value {
+) -> Result<Value, DecoderError> {
     decode_protobuf_to_value_with_policy(
         schema_name,
         schema_data,
@@ -43,19 +37,28 @@ pub fn decode_protobuf_to_value_with_policy(
     schema_data: &[u8],
     message_data: &[u8],
     policy: PresencePolicy,
-) -> Value {
-    let pool = DescriptorPool::decode(schema_data).unwrap_or_else(|e| {
-        panic!("failed to decode protobuf descriptor set for '{schema_name}': {e}")
-    });
+) -> Result<Value, DecoderError> {
+    let pool = DescriptorPool::decode(schema_data).map_err(|e| DecoderError::SchemaParse {
+        schema_name: schema_name.to_string(),
+        source: Box::new(e),
+    })?;
 
-    let message_desc = pool
-        .get_message_by_name(schema_name)
-        .unwrap_or_else(|| panic!("protobuf message descriptor not found: '{schema_name}'"));
+    let message_desc =
+        pool.get_message_by_name(schema_name)
+            .ok_or_else(|| DecoderError::SchemaInvalid {
+                schema_name: schema_name.to_string(),
+                detail: format!("message descriptor not found: '{schema_name}'"),
+            })?;
 
-    let dynamic_message = DynamicMessage::decode(message_desc.clone(), message_data)
-        .unwrap_or_else(|e| panic!("failed to decode protobuf message '{schema_name}': {e}"));
+    let dynamic_message =
+        DynamicMessage::decode(message_desc.clone(), message_data).map_err(|e| {
+            DecoderError::MessageDecode {
+                schema_name: schema_name.to_string(),
+                source: Box::new(e),
+            }
+        })?;
 
-    message_to_value(&dynamic_message, &message_desc, policy)
+    Ok(message_to_value(&dynamic_message, &message_desc, policy))
 }
 
 fn message_to_value(

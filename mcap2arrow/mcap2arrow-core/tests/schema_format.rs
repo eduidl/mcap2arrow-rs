@@ -4,17 +4,19 @@ use mcap2arrow_core::{format_field_defs, DataTypeDef, ElementDef, FieldDef, Fiel
 fn nested_struct_keeps_type_line_and_indentation() -> Result<(), std::fmt::Error> {
     let fields = vec![FieldDef::new(
         "field_root",
-        DataTypeDef::Struct(vec![
-            FieldDef::new("field_a", DataTypeDef::F64, true),
-            FieldDef::new(
-                "field_b",
-                DataTypeDef::Struct(
-                    vec![FieldDef::new("field_c", DataTypeDef::String, true)].into(),
+        DataTypeDef::Struct(
+            vec![
+                FieldDef::new("field_a", DataTypeDef::F64, true),
+                FieldDef::new(
+                    "field_b",
+                    DataTypeDef::Struct(
+                        vec![FieldDef::new("field_c", DataTypeDef::String, true)].into(),
+                    ),
+                    true,
                 ),
-                true,
-            ),
-        ]
-        .into()),
+            ]
+            .into(),
+        ),
         true,
     )];
 
@@ -39,19 +41,23 @@ field_root:
 fn list_of_complex_item_is_rendered_as_block() -> Result<(), std::fmt::Error> {
     let fields = vec![FieldDef::new(
         "field_root",
-        DataTypeDef::Struct(vec![FieldDef::new(
-            "field_list",
-            DataTypeDef::List(Box::new(ElementDef::new(
-                DataTypeDef::Struct(vec![
-                    FieldDef::new("item_a", DataTypeDef::I32, true),
-                    FieldDef::new("item_b", DataTypeDef::String, true),
-                ]
-                .into()),
+        DataTypeDef::Struct(
+            vec![FieldDef::new(
+                "field_list",
+                DataTypeDef::List(Box::new(ElementDef::new(
+                    DataTypeDef::Struct(
+                        vec![
+                            FieldDef::new("item_a", DataTypeDef::I32, true),
+                            FieldDef::new("item_b", DataTypeDef::String, true),
+                        ]
+                        .into(),
+                    ),
+                    true,
+                ))),
                 true,
-            ))),
-            true,
-        )]
-        .into()),
+            )]
+            .into(),
+        ),
         true,
     )];
 

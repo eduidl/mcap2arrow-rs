@@ -1,6 +1,6 @@
 //! Convert a protobuf `FileDescriptorSet` into [`FieldDef`] schema.
 
-use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef, FieldDefs};
+use mcap2arrow_core::{DataTypeDef, DecoderError, ElementDef, FieldDef, FieldDefs};
 use prost_reflect::{DescriptorPool, FieldDescriptor, Kind, MessageDescriptor};
 
 use crate::PresencePolicy;
@@ -11,12 +11,10 @@ use crate::PresencePolicy;
 /// `schema_name` is the fully-qualified protobuf message name
 /// (e.g. `"my.package.MyMessage"`).  `schema_data` must be a valid
 /// serialized `google.protobuf.FileDescriptorSet`.
-///
-/// # Panics
-///
-/// Panics if the descriptor set cannot be decoded or the target message
-/// descriptor is missing.
-pub fn protobuf_descriptor_to_schema(schema_name: &str, schema_data: &[u8]) -> FieldDefs {
+pub fn protobuf_descriptor_to_schema(
+    schema_name: &str,
+    schema_data: &[u8],
+) -> Result<FieldDefs, DecoderError> {
     protobuf_descriptor_to_schema_with_policy(
         schema_name,
         schema_data,
@@ -29,44 +27,67 @@ pub fn protobuf_descriptor_to_schema_with_policy(
     schema_name: &str,
     schema_data: &[u8],
     policy: PresencePolicy,
-) -> FieldDefs {
-    let pool = DescriptorPool::decode(schema_data).unwrap_or_else(|e| {
-        panic!("failed to decode protobuf descriptor set for '{schema_name}': {e}")
-    });
-    let message_desc: MessageDescriptor = pool
-        .get_message_by_name(schema_name)
-        .unwrap_or_else(|| panic!("protobuf message descriptor not found: '{schema_name}'"));
-    message_fields_to_field_defs(&message_desc, policy)
+) -> Result<FieldDefs, DecoderError> {
+    let pool = DescriptorPool::decode(schema_data).map_err(|e| DecoderError::SchemaParse {
+        schema_name: schema_name.to_string(),
+        source: Box::new(e),
+    })?;
+    let message_desc: MessageDescriptor =
+        pool.get_message_by_name(schema_name)
+            .ok_or_else(|| DecoderError::SchemaInvalid {
+                schema_name: schema_name.to_string(),
+                detail: format!("message descriptor not found: '{schema_name}'"),
+            })?;
+    message_fields_to_field_defs(schema_name, &message_desc, policy)
 }
 
-fn message_fields_to_field_defs(desc: &MessageDescriptor, policy: PresencePolicy) -> FieldDefs {
+fn message_fields_to_field_defs(
+    schema_name: &str,
+    desc: &MessageDescriptor,
+    policy: PresencePolicy,
+) -> Result<FieldDefs, DecoderError> {
     desc.fields()
-        .map(|f| field_descriptor_to_field_def(&f, policy))
-        .collect::<Vec<_>>()
-        .into()
+        .map(|f| field_descriptor_to_field_def(schema_name, &f, policy))
+        .collect::<Result<Vec<_>, _>>()
+        .map(Into::into)
 }
 
-fn field_descriptor_to_field_def(fd: &FieldDescriptor, policy: PresencePolicy) -> FieldDef {
-    let inner_dt = kind_to_data_type_def(fd, policy);
+fn field_descriptor_to_field_def(
+    schema_name: &str,
+    fd: &FieldDescriptor,
+    policy: PresencePolicy,
+) -> Result<FieldDef, DecoderError> {
+    let inner_dt = kind_to_data_type_def(schema_name, fd, policy)?;
 
     let dt = if fd.is_list() {
         DataTypeDef::List(Box::new(ElementDef::new(inner_dt, false)))
     } else if fd.is_map() {
         let Kind::Message(entry_desc) = fd.kind() else {
-            panic!(
-                "map field `{}` has non-message kind: {:?}",
-                fd.name(),
-                fd.kind()
-            );
+            return Err(DecoderError::SchemaInvalid {
+                schema_name: schema_name.to_string(),
+                detail: format!(
+                    "map field `{}` has non-message kind: {:?}",
+                    fd.name(),
+                    fd.kind()
+                ),
+            });
         };
-        let key_field = entry_desc
-            .get_field_by_name("key")
-            .unwrap_or_else(|| panic!("map entry `{}` missing key field", fd.name()));
-        let value_field = entry_desc
-            .get_field_by_name("value")
-            .unwrap_or_else(|| panic!("map entry `{}` missing value field", fd.name()));
-        let key_dt = kind_to_data_type_def(&key_field, policy);
-        let val_dt = kind_to_data_type_def(&value_field, policy);
+        let key_field =
+            entry_desc
+                .get_field_by_name("key")
+                .ok_or_else(|| DecoderError::SchemaInvalid {
+                    schema_name: schema_name.to_string(),
+                    detail: format!("map entry `{}` missing key field", fd.name()),
+                })?;
+        let value_field =
+            entry_desc
+                .get_field_by_name("value")
+                .ok_or_else(|| DecoderError::SchemaInvalid {
+                    schema_name: schema_name.to_string(),
+                    detail: format!("map entry `{}` missing value field", fd.name()),
+                })?;
+        let key_dt = kind_to_data_type_def(schema_name, &key_field, policy)?;
+        let val_dt = kind_to_data_type_def(schema_name, &value_field, policy)?;
         DataTypeDef::Map {
             key: Box::new(ElementDef::new(key_dt, false)),
             value: Box::new(ElementDef::new(val_dt, false)),
@@ -79,11 +100,15 @@ fn field_descriptor_to_field_def(fd: &FieldDescriptor, policy: PresencePolicy) -
         PresencePolicy::AlwaysDefault => false,
         PresencePolicy::PresenceAware => fd.supports_presence(),
     };
-    FieldDef::new(fd.name(), dt, nullable)
+    Ok(FieldDef::new(fd.name(), dt, nullable))
 }
 
-fn kind_to_data_type_def(fd: &FieldDescriptor, policy: PresencePolicy) -> DataTypeDef {
-    match fd.kind() {
+fn kind_to_data_type_def(
+    schema_name: &str,
+    fd: &FieldDescriptor,
+    policy: PresencePolicy,
+) -> Result<DataTypeDef, DecoderError> {
+    let dt = match fd.kind() {
         Kind::Double => DataTypeDef::F64,
         Kind::Float => DataTypeDef::F32,
         Kind::Int32 | Kind::Sint32 | Kind::Sfixed32 => DataTypeDef::I32,
@@ -95,8 +120,9 @@ fn kind_to_data_type_def(fd: &FieldDescriptor, policy: PresencePolicy) -> DataTy
         Kind::Bytes => DataTypeDef::Bytes,
         Kind::Enum(_) => DataTypeDef::String,
         Kind::Message(msg_desc) => {
-            let fields = message_fields_to_field_defs(&msg_desc, policy);
+            let fields = message_fields_to_field_defs(schema_name, &msg_desc, policy)?;
             DataTypeDef::Struct(fields)
         }
-    }
+    };
+    Ok(dt)
 }

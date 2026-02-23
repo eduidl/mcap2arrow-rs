@@ -6,8 +6,8 @@ use std::{
 use arrow::array::Int64Array;
 use mcap2arrow::{McapReader, McapReaderError};
 use mcap2arrow_core::{
-    DataTypeDef, EncodingKey, FieldDef, FieldDefs, MessageDecoder, MessageEncoding, SchemaEncoding,
-    Value,
+    DataTypeDef, DecoderError, EncodingKey, FieldDef, FieldDefs, MessageDecoder, MessageEncoding,
+    SchemaEncoding, Value,
 };
 
 fn fixture_path(name: &str) -> PathBuf {
@@ -48,12 +48,21 @@ impl MessageDecoder for TestJsonDecoder {
         EncodingKey::new(SchemaEncoding::JsonSchema, MessageEncoding::Json)
     }
 
-    fn decode(&self, _schema_name: &str, _schema_data: &[u8], _message_data: &[u8]) -> Value {
-        Value::Struct(vec![Value::I64(1)])
+    fn decode(
+        &self,
+        _schema_name: &str,
+        _schema_data: &[u8],
+        _message_data: &[u8],
+    ) -> Result<Value, DecoderError> {
+        Ok(Value::Struct(vec![Value::I64(1)]))
     }
 
-    fn derive_schema(&self, _schema_name: &str, _schema_data: &[u8]) -> FieldDefs {
-        vec![FieldDef::new("value", DataTypeDef::I64, true)].into()
+    fn derive_schema(
+        &self,
+        _schema_name: &str,
+        _schema_data: &[u8],
+    ) -> Result<FieldDefs, DecoderError> {
+        Ok(vec![FieldDef::new("value", DataTypeDef::I64, true)].into())
     }
 }
 
@@ -62,12 +71,21 @@ impl MessageDecoder for OverriddenJsonDecoder {
         EncodingKey::new(SchemaEncoding::JsonSchema, MessageEncoding::Json)
     }
 
-    fn decode(&self, _schema_name: &str, _schema_data: &[u8], _message_data: &[u8]) -> Value {
-        Value::Struct(vec![Value::I64(2)])
+    fn decode(
+        &self,
+        _schema_name: &str,
+        _schema_data: &[u8],
+        _message_data: &[u8],
+    ) -> Result<Value, DecoderError> {
+        Ok(Value::Struct(vec![Value::I64(2)]))
     }
 
-    fn derive_schema(&self, _schema_name: &str, _schema_data: &[u8]) -> FieldDefs {
-        vec![FieldDef::new("value", DataTypeDef::I64, true)].into()
+    fn derive_schema(
+        &self,
+        _schema_name: &str,
+        _schema_data: &[u8],
+    ) -> Result<FieldDefs, DecoderError> {
+        Ok(vec![FieldDef::new("value", DataTypeDef::I64, true)].into())
     }
 }
 

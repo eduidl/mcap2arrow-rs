@@ -1,6 +1,6 @@
 mod test_helpers;
 
-use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef};
+use mcap2arrow_core::{DataTypeDef, DecoderError, ElementDef, FieldDef};
 use mcap2arrow_protobuf::{
     protobuf_descriptor_to_schema, protobuf_descriptor_to_schema_with_policy, PresencePolicy,
 };
@@ -34,7 +34,7 @@ fn scalar_fields() {
         ..Default::default()
     };
     let fds = build_fds("scalars.proto", vec![msg]);
-    let schema = protobuf_descriptor_to_schema("Scalars", &fds);
+    let schema = protobuf_descriptor_to_schema("Scalars", &fds).unwrap();
 
     let expected = vec![
         ("f_double", DataTypeDef::F64),
@@ -70,7 +70,7 @@ fn repeated_field_becomes_list() {
         ..Default::default()
     };
     let fds = build_fds("list.proto", vec![msg]);
-    let schema = protobuf_descriptor_to_schema("WithList", &fds);
+    let schema = protobuf_descriptor_to_schema("WithList", &fds).unwrap();
 
     assert_eq!(schema.len(), 1);
     let field = &schema[0];
@@ -94,7 +94,7 @@ fn nested_message_becomes_struct() {
         ..Default::default()
     };
     let fds = build_fds("nested.proto", vec![inner, outer]);
-    let schema = protobuf_descriptor_to_schema("Outer", &fds);
+    let schema = protobuf_descriptor_to_schema("Outer", &fds).unwrap();
 
     assert_eq!(schema.len(), 1);
     let field = &schema[0];
@@ -115,7 +115,7 @@ fn enum_field_becomes_string() {
         ..Default::default()
     };
     let fds = build_fds_with_enums("enum.proto", vec![msg], vec![color_enum]);
-    let schema = protobuf_descriptor_to_schema("WithEnum", &fds);
+    let schema = protobuf_descriptor_to_schema("WithEnum", &fds).unwrap();
 
     assert_eq!(schema.len(), 1);
     assert_eq!(schema[0].name, "color");
@@ -137,7 +137,7 @@ fn map_field_becomes_map_type() {
         ..Default::default()
     };
     let fds = build_fds("map.proto", vec![msg]);
-    let schema = protobuf_descriptor_to_schema("WithMap", &fds);
+    let schema = protobuf_descriptor_to_schema("WithMap", &fds).unwrap();
 
     assert_eq!(schema.len(), 1);
     let field = &schema[0];
@@ -152,21 +152,22 @@ fn map_field_becomes_map_type() {
 }
 
 #[test]
-#[should_panic(expected = "protobuf message descriptor not found")]
-fn unknown_message_name_panics() {
+fn unknown_message_name_returns_error() {
     let msg = DescriptorProto {
         name: Some("Exists".to_string()),
         field: vec![scalar_field("x", 1, Type::Int32)],
         ..Default::default()
     };
     let fds = build_fds("test.proto", vec![msg]);
-    let _ = protobuf_descriptor_to_schema("DoesNotExist", &fds);
+    let err = protobuf_descriptor_to_schema("DoesNotExist", &fds).unwrap_err();
+    assert!(matches!(err, DecoderError::SchemaInvalid { .. }));
+    assert!(err.to_string().contains("DoesNotExist"));
 }
 
 #[test]
-#[should_panic(expected = "failed to decode protobuf descriptor set")]
-fn invalid_schema_data_panics() {
-    let _ = protobuf_descriptor_to_schema("Foo", &[0xff, 0xff, 0xff]);
+fn invalid_schema_data_returns_error() {
+    let err = protobuf_descriptor_to_schema("Foo", &[0xff, 0xff, 0xff]).unwrap_err();
+    assert!(matches!(err, DecoderError::SchemaParse { .. }));
 }
 
 #[test]
@@ -179,7 +180,7 @@ fn proto3_optional_is_nullable_in_presence_aware_policy() {
     };
     let fds = build_fds("optional.proto", vec![msg]);
 
-    let schema = protobuf_descriptor_to_schema("WithOptional", &fds);
+    let schema = protobuf_descriptor_to_schema("WithOptional", &fds).unwrap();
     assert_eq!(schema.len(), 1);
     assert_eq!(schema[0].name, "count");
     assert!(schema[0].element.nullable);
@@ -195,7 +196,8 @@ fn legacy_policy_fields_are_not_nullable() {
     let fds = build_fds("legacy.proto", vec![msg]);
 
     let schema =
-        protobuf_descriptor_to_schema_with_policy("Scalars", &fds, PresencePolicy::AlwaysDefault);
+        protobuf_descriptor_to_schema_with_policy("Scalars", &fds, PresencePolicy::AlwaysDefault)
+            .unwrap();
     assert_eq!(schema.len(), 1);
     assert!(!schema[0].element.nullable);
 }

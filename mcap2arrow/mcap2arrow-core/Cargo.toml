@@ -7,3 +7,4 @@ repository.workspace = true
 include.workspace = true
 
 [dependencies]
+thiserror.workspace = true

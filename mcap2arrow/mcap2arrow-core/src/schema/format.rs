@@ -5,9 +5,7 @@ use super::{DataTypeDef, FieldDef};
 /// Format field definitions in a readable style:
 /// primitive fields are rendered in one line, compound fields are pretty-printed.
 /// Nested fields follow the same rule.
-pub fn format_field_defs(
-    fields: impl AsRef<[FieldDef]>,
-) -> std::result::Result<String, Error> {
+pub fn format_field_defs(fields: impl AsRef<[FieldDef]>) -> std::result::Result<String, Error> {
     let fields = fields.as_ref();
     let mut out = String::new();
 

@@ -11,7 +11,7 @@ mod proto_to_arrow;
 mod schema;
 
 use mcap2arrow_core::{
-    EncodingKey, FieldDefs, MessageDecoder, MessageEncoding, SchemaEncoding, Value,
+    DecoderError, EncodingKey, FieldDefs, MessageDecoder, MessageEncoding, SchemaEncoding, Value,
 };
 pub use policy::PresencePolicy;
 pub use proto_to_arrow::{decode_protobuf_to_value, decode_protobuf_to_value_with_policy};
@@ -44,7 +44,12 @@ impl MessageDecoder for ProtobufDecoder {
         EncodingKey::new(SchemaEncoding::Protobuf, MessageEncoding::Protobuf)
     }
 
-    fn decode(&self, schema_name: &str, schema_data: &[u8], message_data: &[u8]) -> Value {
+    fn decode(
+        &self,
+        schema_name: &str,
+        schema_data: &[u8],
+        message_data: &[u8],
+    ) -> Result<Value, DecoderError> {
         decode_protobuf_to_value_with_policy(
             schema_name,
             schema_data,
@@ -53,7 +58,11 @@ impl MessageDecoder for ProtobufDecoder {
         )
     }
 
-    fn derive_schema(&self, schema_name: &str, schema_data: &[u8]) -> FieldDefs {
+    fn derive_schema(
+        &self,
+        schema_name: &str,
+        schema_data: &[u8],
+    ) -> Result<FieldDefs, DecoderError> {
         protobuf_descriptor_to_schema_with_policy(schema_name, schema_data, self.presence_policy)
     }
 }
