@@ -1,6 +1,6 @@
 //! Ties together schema-bundle parsing, IDL parsing, and type resolution.
 
-use mcap2arrow_ros2_common::{resolve_parsed_section, ParsedSection, ResolvedSchema, Ros2Error};
+use mcap2arrow_ros2_common::{ParsedSection, ResolvedSchema, Ros2Error, resolve_parsed_section};
 
 use crate::{parser::parse_idl_section, schema_bundle::SchemaBundle};
 

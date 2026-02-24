@@ -31,7 +31,9 @@ pub enum McapReaderError {
 
     /// No [`MessageDecoder`](mcap2arrow_core::MessageDecoder) was registered for
     /// the encoding pair found on a channel.
-    #[error("no decoder registered for schema_encoding='{schema_encoding}', message_encoding='{message_encoding}' on topic '{topic}'")]
+    #[error(
+        "no decoder registered for schema_encoding='{schema_encoding}', message_encoding='{message_encoding}' on topic '{topic}'"
+    )]
     NoDecoder {
         schema_encoding: String,
         message_encoding: String,

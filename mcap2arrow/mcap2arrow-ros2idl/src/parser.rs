@@ -31,6 +31,7 @@ use mcap2arrow_ros2_common::{
     ConstDef, EnumDef, FieldDef, ParsedSection, PrimitiveType, Ros2Error, StructDef, TypeExpr,
 };
 use nom::{
+    IResult,
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
     character::complete::{alpha1, alphanumeric1, char, space0},
@@ -38,7 +39,6 @@ use nom::{
     error::{Error, ErrorKind},
     multi::{many0, separated_list0},
     sequence::{pair, preceded, terminated, tuple},
-    IResult,
 };
 
 use crate::lex::strip_line_comments;

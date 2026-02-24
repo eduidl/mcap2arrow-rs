@@ -8,7 +8,7 @@ use arrow::{
     datatypes::{DataType, Field, Schema},
 };
 use mcap2arrow_arrow::{
-    arrow_value_rows_to_record_batch, try_arrow_value_rows_to_record_batch, ArrowConvertError,
+    ArrowConvertError, arrow_value_rows_to_record_batch, try_arrow_value_rows_to_record_batch,
 };
 use mcap2arrow_core::{DecodedMessage, Value};
 

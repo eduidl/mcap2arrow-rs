@@ -40,7 +40,7 @@ pub use arrow_convert::try_arrow_value_rows_to_record_batch;
 pub use error::ArrowConvertError;
 /// Re-exports from [`flatten`].
 pub use flatten::{
-    flatten_record_batch, ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy,
+    ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy, flatten_record_batch,
 };
 /// Re-export of [`schema_convert::field_defs_to_arrow_schema`].
 pub use schema_convert::field_defs_to_arrow_schema;

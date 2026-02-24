@@ -1,4 +1,4 @@
-use mcap2arrow_core::{format_field_defs, DataTypeDef, ElementDef, FieldDef, FieldDefs};
+use mcap2arrow_core::{DataTypeDef, ElementDef, FieldDef, FieldDefs, format_field_defs};
 
 #[test]
 fn nested_struct_keeps_type_line_and_indentation() -> Result<(), std::fmt::Error> {

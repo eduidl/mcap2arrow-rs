@@ -8,7 +8,7 @@ use prost_reflect::{
     DynamicMessage, EnumDescriptor, Kind, MapKey, MessageDescriptor, Value as ProtoValue,
 };
 
-use crate::{schema::parse_message_descriptor, PresencePolicy};
+use crate::{PresencePolicy, schema::parse_message_descriptor};
 
 /// Decode a message payload using an already-resolved [`MessageDescriptor`].
 ///

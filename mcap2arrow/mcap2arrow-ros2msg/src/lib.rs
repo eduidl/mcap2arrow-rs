@@ -22,7 +22,7 @@ mod parser;
 use mcap2arrow_core::{
     DecoderError, EncodingKey, MessageDecoder, MessageEncoding, SchemaEncoding, TopicDecoder,
 };
-use mcap2arrow_ros2_common::{resolve_single_struct, ResolvedSchema, Ros2CdrTopicDecoder};
+use mcap2arrow_ros2_common::{ResolvedSchema, Ros2CdrTopicDecoder, resolve_single_struct};
 pub use parser::parse_msg;
 
 /// [`MessageDecoder`] for ROS 2 .msg schemas with CDR-encoded messages.

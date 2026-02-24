@@ -1,5 +1,5 @@
 use mcap2arrow_ros2_common::{PrimitiveType, ResolvedType};
-use mcap2arrow_ros2idl::{resolve_schema, SchemaBundle};
+use mcap2arrow_ros2idl::{SchemaBundle, resolve_schema};
 
 // ── existing tests ─────────────────────────────────────────────────────────────
 

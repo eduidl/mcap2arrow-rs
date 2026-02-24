@@ -1,6 +1,6 @@
 use mcap2arrow_core::{DecoderError, FieldDefs, TopicDecoder, Value};
 
-use crate::{decode_cdr_to_value, resolved_schema_to_field_defs, ResolvedSchema};
+use crate::{ResolvedSchema, decode_cdr_to_value, resolved_schema_to_field_defs};
 
 /// Shared ROS 2 CDR topic decoder used by both `ros2msg` and `ros2idl`.
 pub struct Ros2CdrTopicDecoder {

@@ -1,10 +1,10 @@
 mod test_helpers;
 
 use mcap2arrow_core::{DataTypeDef, DecoderError, ElementDef, FieldDef};
-use mcap2arrow_protobuf::{message_fields_to_field_defs, parse_message_descriptor, PresencePolicy};
+use mcap2arrow_protobuf::{PresencePolicy, message_fields_to_field_defs, parse_message_descriptor};
 use prost_types::{
-    field_descriptor_proto::{Label, Type},
     DescriptorProto,
+    field_descriptor_proto::{Label, Type},
 };
 use test_helpers::*;
 

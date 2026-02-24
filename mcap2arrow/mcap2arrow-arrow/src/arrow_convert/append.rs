@@ -1,15 +1,15 @@
 use arrow::{
     array::{
         ArrayBuilder, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
-        Float64Builder, Int16Builder, Int32Builder, Int64Builder, Int8Builder, ListBuilder,
+        Float64Builder, Int8Builder, Int16Builder, Int32Builder, Int64Builder, ListBuilder,
         MapBuilder, NullBuilder, StringBuilder, StructBuilder, TimestampNanosecondBuilder,
-        UInt16Builder, UInt32Builder, UInt64Builder, UInt8Builder,
+        UInt8Builder, UInt16Builder, UInt32Builder, UInt64Builder,
     },
     datatypes::DataType,
 };
 use mcap2arrow_core::{Value, ValueTypeError};
 
-use super::scalar::{scalar_value_for_datatype, ScalarValue};
+use super::scalar::{ScalarValue, scalar_value_for_datatype};
 
 macro_rules! cast_builder {
     ($b:expr, $T:ty) => {

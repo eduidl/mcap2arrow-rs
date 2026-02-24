@@ -6,10 +6,10 @@
 
 use mcap2arrow_ros2_common::{ConstDef, FieldDef, PrimitiveType, Ros2Error, StructDef, TypeExpr};
 use re_ros_msg::{
+    MessageSchema,
     message_spec::{
         ArraySize, BuiltInType, ComplexType, Constant, Field, MessageSpecification, Type,
     },
-    MessageSchema,
 };
 /// Parse .msg format and generate StructDef
 pub fn parse_msg(schema_name: &str, msg_text: &str) -> Result<StructDef, Ros2Error> {

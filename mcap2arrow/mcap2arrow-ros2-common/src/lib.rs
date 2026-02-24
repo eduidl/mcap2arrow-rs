@@ -20,6 +20,6 @@ pub use error::Ros2Error;
 pub use schema::resolved_schema_to_field_defs;
 pub use topic_decoder::Ros2CdrTopicDecoder;
 pub use type_resolver::{
-    ensure_builtin_structs, resolve_parsed_section, resolve_single_struct, resolve_struct,
-    ResolvedField, ResolvedSchema, ResolvedStruct, ResolvedType,
+    ResolvedField, ResolvedSchema, ResolvedStruct, ResolvedType, ensure_builtin_structs,
+    resolve_parsed_section, resolve_single_struct, resolve_struct,
 };

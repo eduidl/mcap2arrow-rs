@@ -11,7 +11,7 @@ use arrow::{
     record_batch::RecordBatch,
 };
 use mcap2arrow_arrow::{
-    flatten_record_batch, ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy,
+    ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy, flatten_record_batch,
 };
 
 fn make_batch(fields: Vec<Field>, arrays: Vec<ArrayRef>) -> RecordBatch {

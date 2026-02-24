@@ -2,9 +2,9 @@
 
 use prost::Message;
 use prost_types::{
-    field_descriptor_proto::{Label, Type},
     DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
     FileDescriptorProto, FileDescriptorSet, OneofDescriptorProto,
+    field_descriptor_proto::{Label, Type},
 };
 
 /// Build a `FileDescriptorSet` containing a single file with the given message

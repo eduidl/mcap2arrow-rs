@@ -2,13 +2,13 @@ mod test_helpers;
 
 use mcap2arrow_core::{DecoderError, Value};
 use mcap2arrow_protobuf::{
-    decode_protobuf_to_value, decode_protobuf_to_value_with_policy, PresencePolicy,
+    PresencePolicy, decode_protobuf_to_value, decode_protobuf_to_value_with_policy,
 };
 use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage};
 use prost_types::{
-    field_descriptor_proto::{Label, Type},
     DescriptorProto,
+    field_descriptor_proto::{Label, Type},
 };
 use test_helpers::*;
 

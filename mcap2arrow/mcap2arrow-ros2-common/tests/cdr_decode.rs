@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use mcap2arrow_core::Value;
 use mcap2arrow_ros2_common::{
-    decode_cdr_to_value, PrimitiveType, ResolvedField, ResolvedSchema, ResolvedStruct, ResolvedType,
+    PrimitiveType, ResolvedField, ResolvedSchema, ResolvedStruct, ResolvedType, decode_cdr_to_value,
 };
 
 // ── helpers ──────────────────────────────────────────────────────────────────
