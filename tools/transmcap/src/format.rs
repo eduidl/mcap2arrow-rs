@@ -1,5 +1,5 @@
 use clap::ValueEnum;
-use mcap2arrow_arrow::{ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy};
+use mcap2arrow::arrow::{ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy};
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[value(rename_all = "kebab-case")]

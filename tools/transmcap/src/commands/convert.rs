@@ -3,9 +3,11 @@ use std::{path::PathBuf, str::FromStr};
 use anyhow::{bail, Result};
 use clap::Args;
 use indicatif::{ProgressBar, ProgressStyle};
-use mcap2arrow::McapReader;
-use mcap2arrow_arrow::{
-    flatten_record_batch, ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy,
+use mcap2arrow::{
+    arrow::{
+        flatten_record_batch, ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy,
+    },
+    McapReader,
 };
 
 use crate::{

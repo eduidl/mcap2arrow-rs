@@ -2,8 +2,7 @@ use std::{fs, path::PathBuf};
 
 use anyhow::Result;
 use clap::Args;
-use mcap2arrow::McapReader;
-use mcap2arrow_core::format_field_defs;
+use mcap2arrow::{core::format_field_defs, McapReader};
 
 #[derive(Args)]
 pub struct SchemaArgs {
