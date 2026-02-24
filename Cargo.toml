@@ -3,7 +3,7 @@ members = ["mcap2arrow/*", "tools/*"]
 resolver = "3"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.90"
 license = "Apache-2.0"
@@ -11,13 +11,13 @@ repository = "https://github.com/eduidl/mcap2arrow-rs"
 include = ["src/**/*", "tests/**/*", "Cargo.toml", "README.md"]
 
 [workspace.dependencies]
-mcap2arrow = { path = "mcap2arrow/mcap2arrow", version = "=0.1.0" }
-mcap2arrow-arrow = { path = "mcap2arrow/mcap2arrow-arrow", version = "=0.1.0" }
-mcap2arrow-core = { path = "mcap2arrow/mcap2arrow-core", version = "=0.1.0" }
-mcap2arrow-protobuf = { path = "mcap2arrow/mcap2arrow-protobuf", version = "=0.1.0" }
-mcap2arrow-ros2-common = { path = "mcap2arrow/mcap2arrow-ros2-common", version = "=0.1.0" }
-mcap2arrow-ros2idl = { path = "mcap2arrow/mcap2arrow-ros2idl", version = "=0.1.0" }
-mcap2arrow-ros2msg = { path = "mcap2arrow/mcap2arrow-ros2msg", version = "=0.1.0" }
+mcap2arrow = { path = "mcap2arrow/mcap2arrow", version = "=0.2.0" }
+mcap2arrow-arrow = { path = "mcap2arrow/mcap2arrow-arrow", version = "=0.2.0" }
+mcap2arrow-core = { path = "mcap2arrow/mcap2arrow-core", version = "=0.2.0" }
+mcap2arrow-protobuf = { path = "mcap2arrow/mcap2arrow-protobuf", version = "=0.2.0" }
+mcap2arrow-ros2-common = { path = "mcap2arrow/mcap2arrow-ros2-common", version = "=0.2.0" }
+mcap2arrow-ros2idl = { path = "mcap2arrow/mcap2arrow-ros2idl", version = "=0.2.0" }
+mcap2arrow-ros2msg = { path = "mcap2arrow/mcap2arrow-ros2msg", version = "=0.2.0" }
 
 arrow = { version = "57.3.0", default-features = false }
 thiserror = "2.0.18"

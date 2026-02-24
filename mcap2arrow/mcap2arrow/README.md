@@ -6,7 +6,7 @@
 
 ```toml
 [dependencies]
-mcap2arrow = "0.1.0"
+mcap2arrow = "0.2.0"
 ```
 
 ## What It Provides
@@ -28,7 +28,7 @@ Disable defaults to trim dependencies:
 
 ```toml
 [dependencies]
-mcap2arrow = { version = "0.1.0", default-features = false, features = ["protobuf"] }
+mcap2arrow = { version = "0.2.0", default-features = false, features = ["protobuf"] }
 ```
 
 Encoding pairs supported by built-in decoders:
