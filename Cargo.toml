@@ -21,3 +21,8 @@ mcap2arrow-ros2msg = { path = "mcap2arrow/mcap2arrow-ros2msg", version = "=0.1.0
 
 arrow = { version = "57.3.0", default-features = false }
 thiserror = "2.0.18"
+
+[workspace.metadata.release]
+allow-branch = ["main"]
+shared-version = true
+tag-prefix = ""
