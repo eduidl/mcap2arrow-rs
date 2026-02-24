@@ -144,12 +144,10 @@ impl Decoder {
                     .try_get_u32_le()
                     .map_err(|_| Ros2Error(format!("unexpected EOF at {path}")))?
                     as usize;
-                if let Some(max) = max_len {
-                    if len > *max {
-                        return Err(
-                            format!("sequence bound overflow at {path}: {len} > {max}").into()
-                        );
-                    }
+                if let Some(max) = max_len
+                    && len > *max
+                {
+                    return Err(format!("sequence bound overflow at {path}: {len} > {max}").into());
                 }
                 let mut out = Vec::with_capacity(len);
                 for i in 0..len {
