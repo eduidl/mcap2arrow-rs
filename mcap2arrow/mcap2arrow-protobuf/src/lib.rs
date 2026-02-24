@@ -3,8 +3,9 @@
 //! This crate provides [`ProtobufDecoder`], which decodes protobuf-encoded
 //! MCAP messages into the intermediate [`Value`] representation used by
 //! mcap2arrow-core.  It also re-exports the lower-level helpers
-//! [`decode_protobuf_to_value`], [`parse_message_descriptor`], and
-//! [`message_fields_to_field_defs`] for direct use.
+//! [`decode_protobuf_to_value`], [`decode_protobuf_to_value_with_policy`],
+//! [`parse_message_descriptor`], and [`message_fields_to_field_defs`]
+//! for direct use.
 
 mod policy;
 mod proto_to_arrow;

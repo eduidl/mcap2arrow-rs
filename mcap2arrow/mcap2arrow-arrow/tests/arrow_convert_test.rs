@@ -7,7 +7,9 @@ use arrow::{
     },
     datatypes::{DataType, Field, Schema},
 };
-use mcap2arrow_arrow::arrow_value_rows_to_record_batch;
+use mcap2arrow_arrow::{
+    arrow_value_rows_to_record_batch, try_arrow_value_rows_to_record_batch, ArrowConvertError,
+};
 use mcap2arrow_core::{DecodedMessage, Value};
 
 fn make_row(log_time: u64, publish_time: u64, value: Value) -> DecodedMessage {
@@ -254,7 +256,9 @@ fn unsupported_arrow_type_panics() {
 }
 
 #[test]
-#[should_panic(expected = "expected FixedSizeList length")]
+#[should_panic(
+    expected = "value type mismatch: expected FixedSizeList(length=3), got Array(length=2)"
+)]
 fn fixed_size_list_length_mismatch_panics() {
     let schema = Arc::new(Schema::new(vec![Field::new(
         "arr_f32",
@@ -268,6 +272,46 @@ fn fixed_size_list_length_mismatch_panics() {
         Value::Struct(vec![Value::Array(vec![Value::F32(1.0), Value::F32(2.0)])]),
     )];
     arrow_value_rows_to_record_batch(&schema, &rows);
+}
+
+#[test]
+fn fixed_size_list_length_mismatch_returns_error_in_try_api() {
+    let schema = Arc::new(Schema::new(vec![Field::new(
+        "arr_f32",
+        DataType::FixedSizeList(Arc::new(Field::new("item", DataType::Float32, true)), 3),
+        true,
+    )]));
+
+    let rows = vec![make_row(
+        1_u64,
+        2_u64,
+        Value::Struct(vec![Value::Array(vec![Value::F32(1.0), Value::F32(2.0)])]),
+    )];
+
+    let err = try_arrow_value_rows_to_record_batch(&schema, &rows).unwrap_err();
+    assert!(matches!(err, ArrowConvertError::ValueType(_)));
+    assert_eq!(
+        err.to_string(),
+        "value type mismatch: expected FixedSizeList(length=3), got Array(length=2)"
+    );
+}
+
+#[test]
+fn fixed_size_list_non_array_returns_error_in_try_api() {
+    let schema = Arc::new(Schema::new(vec![Field::new(
+        "arr_f32",
+        DataType::FixedSizeList(Arc::new(Field::new("item", DataType::Float32, true)), 3),
+        true,
+    )]));
+
+    let rows = vec![make_row(1_u64, 2_u64, Value::Struct(vec![Value::I32(99)]))];
+
+    let err = try_arrow_value_rows_to_record_batch(&schema, &rows).unwrap_err();
+    assert!(matches!(err, ArrowConvertError::ValueType(_)));
+    assert_eq!(
+        err.to_string(),
+        "value type mismatch: expected Array, got I32"
+    );
 }
 
 #[test]
@@ -338,4 +382,18 @@ fn map_value_nullability_is_preserved() {
             false,
         )
     );
+}
+
+#[test]
+fn scalar_type_mismatch_returns_error_in_try_api() {
+    let schema = Arc::new(Schema::new(vec![Field::new(
+        "scalar_i8",
+        DataType::Int8,
+        true,
+    )]));
+    let rows = vec![make_row(1_u64, 2_u64, Value::Struct(vec![Value::I16(10)]))];
+
+    let err = try_arrow_value_rows_to_record_batch(&schema, &rows).unwrap_err();
+    assert!(matches!(err, ArrowConvertError::ValueType(_)));
+    assert_eq!(err.to_string(), "value type mismatch: expected I8, got I16");
 }

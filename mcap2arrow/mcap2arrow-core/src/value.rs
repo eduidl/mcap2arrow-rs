@@ -2,6 +2,8 @@
 
 use std::sync::Arc;
 
+use crate::error::ValueTypeError;
+
 /// Value produced by message decoders.
 /// All types are explicit; no lossy conversions.
 #[derive(Debug, Clone)]
@@ -31,107 +33,134 @@ impl Value {
         Self::String(Arc::from(s.as_ref()))
     }
 
-    pub fn as_i8(&self) -> Option<i8> {
+    pub fn try_i8(&self) -> Result<Option<i8>, ValueTypeError> {
         match self {
-            Value::I8(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected I8, got {:?}", self),
+            Value::I8(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("I8")),
         }
     }
 
-    pub fn as_i16(&self) -> Option<i16> {
+    pub fn try_i16(&self) -> Result<Option<i16>, ValueTypeError> {
         match self {
-            Value::I16(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected I16, got {:?}", self),
+            Value::I16(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("I16")),
         }
     }
 
-    pub fn as_i32(&self) -> Option<i32> {
+    pub fn try_i32(&self) -> Result<Option<i32>, ValueTypeError> {
         match self {
-            Value::I32(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected I32, got {:?}", self),
+            Value::I32(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("I32")),
         }
     }
 
-    pub fn as_i64(&self) -> Option<i64> {
+    pub fn try_i64(&self) -> Result<Option<i64>, ValueTypeError> {
         match self {
-            Value::I64(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected I64, got {:?}", self),
+            Value::I64(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("I64")),
         }
     }
 
-    pub fn as_u8(&self) -> Option<u8> {
+    pub fn try_u8(&self) -> Result<Option<u8>, ValueTypeError> {
         match self {
-            Value::U8(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected U8, got {:?}", self),
+            Value::U8(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("U8")),
         }
     }
 
-    pub fn as_u16(&self) -> Option<u16> {
+    pub fn try_u16(&self) -> Result<Option<u16>, ValueTypeError> {
         match self {
-            Value::U16(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected U16, got {:?}", self),
+            Value::U16(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("U16")),
         }
     }
 
-    pub fn as_u32(&self) -> Option<u32> {
+    pub fn try_u32(&self) -> Result<Option<u32>, ValueTypeError> {
         match self {
-            Value::U32(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected U32, got {:?}", self),
+            Value::U32(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("U32")),
         }
     }
 
-    pub fn as_u64(&self) -> Option<u64> {
+    pub fn try_u64(&self) -> Result<Option<u64>, ValueTypeError> {
         match self {
-            Value::U64(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected U64, got {:?}", self),
+            Value::U64(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("U64")),
         }
     }
 
-    pub fn as_bool(&self) -> Option<bool> {
+    pub fn try_bool(&self) -> Result<Option<bool>, ValueTypeError> {
         match self {
-            Value::Bool(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected Bool, got {:?}", self),
+            Value::Bool(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("Bool")),
         }
     }
 
-    pub fn as_f32(&self) -> Option<f32> {
+    pub fn try_f32(&self) -> Result<Option<f32>, ValueTypeError> {
         match self {
-            Value::F32(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected F32, got {:?}", self),
+            Value::F32(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("F32")),
         }
     }
 
-    pub fn as_f64(&self) -> Option<f64> {
+    pub fn try_f64(&self) -> Result<Option<f64>, ValueTypeError> {
         match self {
-            Value::F64(v) => Some(*v),
-            Value::Null => None,
-            _ => panic!("expected F64, got {:?}", self),
+            Value::F64(v) => Ok(Some(*v)),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("F64")),
         }
     }
 
-    pub fn as_str(&self) -> Option<&str> {
+    pub fn try_str(&self) -> Result<Option<&str>, ValueTypeError> {
         match self {
-            Value::String(v) => Some(v.as_ref()),
-            Value::Null => None,
-            _ => panic!("expected String, got {:?}", self),
+            Value::String(v) => Ok(Some(v.as_ref())),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("String")),
         }
     }
 
-    pub fn as_bytes(&self) -> Option<&[u8]> {
+    pub fn try_bytes(&self) -> Result<Option<&[u8]>, ValueTypeError> {
         match self {
-            Value::Bytes(v) => Some(v.as_ref()),
-            Value::Null => None,
-            _ => panic!("expected Bytes, got {:?}", self),
+            Value::Bytes(v) => Ok(Some(v.as_ref())),
+            Value::Null => Ok(None),
+            _ => Err(self.type_mismatch("Bytes")),
+        }
+    }
+
+    pub fn type_mismatch(&self, expected: impl Into<String>) -> ValueTypeError {
+        ValueTypeError::new(expected, self.variant_name())
+    }
+
+    fn variant_name(&self) -> &'static str {
+        match self {
+            Value::Null => "Null",
+            Value::Bool(_) => "Bool",
+            Value::I8(_) => "I8",
+            Value::I16(_) => "I16",
+            Value::I32(_) => "I32",
+            Value::I64(_) => "I64",
+            Value::U8(_) => "U8",
+            Value::U16(_) => "U16",
+            Value::U32(_) => "U32",
+            Value::U64(_) => "U64",
+            Value::F32(_) => "F32",
+            Value::F64(_) => "F64",
+            Value::String(_) => "String",
+            Value::Bytes(_) => "Bytes",
+            Value::Struct(_) => "Struct",
+            Value::List(_) => "List",
+            Value::Array(_) => "Array",
+            Value::Map(_) => "Map",
         }
     }
 }

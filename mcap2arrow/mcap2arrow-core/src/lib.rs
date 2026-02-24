@@ -12,7 +12,7 @@ mod schema_encoding;
 mod value;
 
 pub use decoder::{EncodingKey, MessageDecoder, TopicDecoder};
-pub use error::DecoderError;
+pub use error::{DecoderError, ValueTypeError};
 pub use message::DecodedMessage;
 pub use message_encoding::MessageEncoding;
 pub use schema::{format_field_defs, DataTypeDef, ElementDef, FieldDef, FieldDefs};

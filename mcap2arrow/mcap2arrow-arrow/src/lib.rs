@@ -7,7 +7,8 @@
 //! `mcap2arrow-arrow` intentionally keeps the public API small and exposes only
 //! two entry points:
 //! - [`field_defs_to_arrow_schema`] for schema conversion.
-//! - [`arrow_value_rows_to_record_batch`] for row-to-batch conversion.
+//! - [`arrow_value_rows_to_record_batch`] / [`try_arrow_value_rows_to_record_batch`]
+//!   for row-to-batch conversion.
 //!
 //! Both conversions follow the conventions used by this project:
 //! - Timestamp columns are represented as nanosecond `Timestamp` with `UTC`.
@@ -27,11 +28,16 @@
 //! }
 //! ```
 pub mod arrow_convert;
+pub mod error;
 pub mod flatten;
 pub mod schema_convert;
 
 /// Re-export of [`arrow_convert::arrow_value_rows_to_record_batch`].
 pub use arrow_convert::arrow_value_rows_to_record_batch;
+/// Re-exports from [`arrow_convert`].
+pub use arrow_convert::try_arrow_value_rows_to_record_batch;
+/// Re-export of [`error::ArrowConvertError`].
+pub use error::ArrowConvertError;
 /// Re-exports from [`flatten`].
 pub use flatten::{
     flatten_record_batch, ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy,

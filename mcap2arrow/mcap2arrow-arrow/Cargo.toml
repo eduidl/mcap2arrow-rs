@@ -9,3 +9,4 @@ include.workspace = true
 [dependencies]
 mcap2arrow-core.workspace = true
 arrow.workspace = true
+thiserror.workspace = true

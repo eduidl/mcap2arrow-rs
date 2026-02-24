@@ -7,7 +7,7 @@ use arrow::{
     },
     datatypes::DataType,
 };
-use mcap2arrow_core::Value;
+use mcap2arrow_core::{Value, ValueTypeError};
 
 use super::scalar::{scalar_value_for_datatype, ScalarValue};
 
@@ -45,16 +45,16 @@ fn append_list_elements(
     child_builder: &mut Box<dyn ArrayBuilder>,
     elem_dt: &DataType,
     value: &Value,
-) -> bool {
+) -> Result<bool, ValueTypeError> {
     match value {
         Value::List(items) => {
             for item in items {
-                append_value_to_builder(child_builder, elem_dt, item);
+                append_value_to_builder(child_builder, elem_dt, item)?;
             }
-            true
+            Ok(true)
         }
-        Value::Null => false,
-        other => panic!("expected List value, got {other:?}"),
+        Value::Null => Ok(false),
+        _ => Err(value.type_mismatch("List")),
     }
 }
 
@@ -62,17 +62,17 @@ fn append_map_entries(
     map_builder: &mut MapBuilder<Box<dyn ArrayBuilder>, Box<dyn ArrayBuilder>>,
     fields: &arrow::datatypes::Fields,
     value: &Value,
-) -> bool {
+) -> Result<bool, ValueTypeError> {
     match value {
         Value::Map(entries) => {
             for (key, map_value) in entries {
-                append_value_to_builder(map_builder.keys(), fields[0].data_type(), key);
-                append_value_to_builder(map_builder.values(), fields[1].data_type(), map_value);
+                append_value_to_builder(map_builder.keys(), fields[0].data_type(), key)?;
+                append_value_to_builder(map_builder.values(), fields[1].data_type(), map_value)?;
             }
-            true
+            Ok(true)
         }
-        Value::Null => false,
-        other => panic!("expected Map value, got {other:?}"),
+        Value::Null => Ok(false),
+        _ => Err(value.type_mismatch("Map")),
     }
 }
 
@@ -81,28 +81,27 @@ fn append_fixed_size_list_elements(
     elem_dt: &DataType,
     size: i32,
     value: &Value,
-) -> bool {
+) -> Result<bool, ValueTypeError> {
     match value {
         Value::Array(items) => {
             if items.len() != size as usize {
-                panic!(
-                    "expected FixedSizeList length {}, got {}",
-                    size,
-                    items.len()
-                );
+                return Err(ValueTypeError::new(
+                    format!("FixedSizeList(length={size})"),
+                    format!("Array(length={})", items.len()),
+                ));
             }
             for item in items {
-                append_value_to_builder(child_builder, elem_dt, item);
+                append_value_to_builder(child_builder, elem_dt, item)?;
             }
-            true
+            Ok(true)
         }
         Value::Null => {
             for _ in 0..size {
-                append_value_to_builder(child_builder, elem_dt, &Value::Null);
+                append_value_to_builder(child_builder, elem_dt, &Value::Null)?;
             }
-            false
+            Ok(false)
         }
-        other => panic!("expected Array value, got {other:?}"),
+        _ => Err(value.type_mismatch("Array")),
     }
 }
 
@@ -110,22 +109,22 @@ pub(super) fn append_value_to_builder(
     builder: &mut Box<dyn ArrayBuilder>,
     dt: &DataType,
     value: &Value,
-) {
-    if let Some(scalar) = scalar_value_for_datatype(dt, value) {
+) -> Result<(), ValueTypeError> {
+    if let Some(scalar) = scalar_value_for_datatype(dt, value)? {
         append_scalar_dyn(builder, &scalar);
-        return;
+        return Ok(());
     }
 
     match dt {
         DataType::List(field) => {
             let b = cast_builder!(builder, ListBuilder<Box<dyn ArrayBuilder>>);
-            let valid = append_list_elements(b.values(), field.data_type(), value);
+            let valid = append_list_elements(b.values(), field.data_type(), value)?;
             b.append(valid);
         }
         DataType::FixedSizeList(field, size) => {
             let b = cast_builder!(builder, FixedSizeListBuilder<Box<dyn ArrayBuilder>>);
             let valid =
-                append_fixed_size_list_elements(b.values(), field.data_type(), *size, value);
+                append_fixed_size_list_elements(b.values(), field.data_type(), *size, value)?;
             b.append(valid);
         }
         DataType::Struct(fields) => {
@@ -134,17 +133,17 @@ pub(super) fn append_value_to_builder(
                 Value::Struct(children) => {
                     for (i, field) in fields.iter().enumerate() {
                         let child_value = children.get(i).unwrap_or(&Value::Null);
-                        append_value_to_struct_field(b, i, field.data_type(), child_value);
+                        append_value_to_struct_field(b, i, field.data_type(), child_value)?;
                     }
                     b.append(true);
                 }
                 Value::Null => {
                     for (i, field) in fields.iter().enumerate() {
-                        append_value_to_struct_field(b, i, field.data_type(), &Value::Null);
+                        append_value_to_struct_field(b, i, field.data_type(), &Value::Null)?;
                     }
                     b.append(false);
                 }
-                other => panic!("expected Struct value, got {other:?}"),
+                _ => return Err(value.type_mismatch("Struct")),
             }
         }
         DataType::Map(entry_field, _) => {
@@ -156,11 +155,12 @@ pub(super) fn append_value_to_builder(
                 DataType::Struct(fields) if fields.len() == 2 => fields,
                 other => panic!("Map entry field must be Struct with 2 fields, got: {other:?}"),
             };
-            let valid = append_map_entries(b, fields, value);
+            let valid = append_map_entries(b, fields, value)?;
             b.append(valid).expect("MapBuilder::append");
         }
         other => panic!("unsupported DataType in append_value_to_builder: {other:?}"),
     }
+    Ok(())
 }
 
 fn append_value_to_struct_field(
@@ -168,6 +168,6 @@ fn append_value_to_struct_field(
     index: usize,
     dt: &DataType,
     value: &Value,
-) {
-    append_value_to_builder(&mut sb.field_builders_mut()[index], dt, value);
+) -> Result<(), ValueTypeError> {
+    append_value_to_builder(&mut sb.field_builders_mut()[index], dt, value)
 }

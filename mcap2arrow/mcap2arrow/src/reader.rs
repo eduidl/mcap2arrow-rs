@@ -64,9 +64,12 @@ impl McapReader {
         Ok(unsafe { Mmap::map(&file) }?)
     }
 
-    fn read_summary(&self, path: &Path) -> Result<mcap::read::Summary, McapReaderError> {
-        let mmap = self.mmap_file(path)?;
-        mcap::read::Summary::read(&mmap)?.ok_or_else(|| McapReaderError::SummaryNotAvailable {
+    fn read_summary(
+        &self,
+        path: &Path,
+        mmap: &Mmap,
+    ) -> Result<mcap::read::Summary, McapReaderError> {
+        mcap::read::Summary::read(mmap)?.ok_or_else(|| McapReaderError::SummaryNotAvailable {
             path: path.display().to_string(),
         })
     }
@@ -147,7 +150,7 @@ impl McapReader {
         }
 
         let mmap = self.mmap_file(path)?;
-        let summary = self.read_summary(path)?;
+        let summary = self.read_summary(path, &mmap)?;
         let context = self.resolve_topic_batch_context(&summary, topic)?;
         let mut rows = Vec::with_capacity(self.batch_size);
 
@@ -183,7 +186,8 @@ impl McapReader {
     ///
     /// MCAP summary and summary stats are required.
     pub fn message_count(&self, path: &Path, topic: &str) -> Result<u64, McapReaderError> {
-        let summary = self.read_summary(path)?;
+        let mmap = self.mmap_file(path)?;
+        let summary = self.read_summary(path, &mmap)?;
         let channel = get_channel_from_summary(&summary, topic)?;
 
         let stats = summary
@@ -202,7 +206,8 @@ impl McapReader {
 
     /// Derive and return schema IR (`FieldDef`) for a topic without reading message payloads.
     pub fn topic_field_defs(&self, path: &Path, topic: &str) -> Result<FieldDefs, McapReaderError> {
-        let summary = self.read_summary(path)?;
+        let mmap = self.mmap_file(path)?;
+        let summary = self.read_summary(path, &mmap)?;
         let context = self.resolve_topic_batch_context(&summary, topic)?;
         Ok(context.field_defs)
     }

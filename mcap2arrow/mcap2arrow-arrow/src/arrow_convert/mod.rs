@@ -16,6 +16,8 @@ use arrow::{
 };
 use mcap2arrow_core::{DecodedMessage, Value};
 
+use crate::error::ArrowConvertError;
+
 /// Convert decoded rows to a RecordBatch.
 ///
 /// `body_schema` must describe only the message body fields (no timestamp columns).
@@ -31,8 +33,15 @@ pub fn arrow_value_rows_to_record_batch(
     body_schema: &Schema,
     rows: &[DecodedMessage],
 ) -> RecordBatch {
+    try_arrow_value_rows_to_record_batch(body_schema, rows).unwrap_or_else(|e| panic!("{e}"))
+}
+
+pub fn try_arrow_value_rows_to_record_batch(
+    body_schema: &Schema,
+    rows: &[DecodedMessage],
+) -> Result<RecordBatch, ArrowConvertError> {
     if rows.is_empty() {
-        panic!("Cannot create RecordBatch from empty rows");
+        return Err(ArrowConvertError::EmptyRows);
     }
 
     let full_schema = Arc::new(crate::schema_convert::with_timestamp_fields(
@@ -57,11 +66,10 @@ pub fn arrow_value_rows_to_record_batch(
 
     for (i, field) in body_fields.iter().enumerate() {
         let values: Vec<&Value> = rows.iter().map(|r| extract_field(&r.value, i)).collect();
-        arrays.push(build_array_from_values(field.data_type(), &values));
+        arrays.push(build_array_from_values(field.data_type(), &values)?);
     }
 
-    RecordBatch::try_new(full_schema, arrays)
-        .expect("RecordBatch::try_new failed: schema/array type mismatch")
+    Ok(RecordBatch::try_new(full_schema, arrays)?)
 }
 
 fn extract_field(root: &Value, field_index: usize) -> &Value {
@@ -72,14 +80,17 @@ fn extract_field(root: &Value, field_index: usize) -> &Value {
     }
 }
 
-fn build_array_from_values(dt: &DataType, values: &[&Value]) -> ArrayRef {
+fn build_array_from_values(
+    dt: &DataType,
+    values: &[&Value],
+) -> Result<ArrayRef, ArrowConvertError> {
     let capacity = match dt {
         DataType::List(_) | DataType::Map(_, _) => values.len().saturating_mul(4),
         _ => values.len(),
     };
     let mut builder = builder::make_builder(dt, capacity);
     for value in values {
-        append::append_value_to_builder(&mut builder, dt, value);
+        append::append_value_to_builder(&mut builder, dt, value)?;
     }
-    builder.finish()
+    Ok(builder.finish())
 }
