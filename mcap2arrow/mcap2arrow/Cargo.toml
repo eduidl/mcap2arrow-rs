@@ -2,6 +2,7 @@
 name = "mcap2arrow"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 include.workspace = true
@@ -12,8 +13,8 @@ readme = "README.md"
 mcap2arrow-arrow.workspace = true
 mcap2arrow-core.workspace = true
 arrow.workspace = true
-mcap.workspace = true
-memmap2.workspace = true
+mcap = "0.24.0"
+memmap2 = "0.9.10"
 thiserror.workspace = true
 
 mcap2arrow-protobuf = { workspace = true, optional = true }
