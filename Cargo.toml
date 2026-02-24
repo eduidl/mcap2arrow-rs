@@ -7,17 +7,16 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/eduidl/mcap2arrow-rs"
-include = [
-    "src/**/*",
-    "Cargo.toml",
-    "README.md",
-]
+include = ["src/**/*", "Cargo.toml", "README.md"]
 
 [workspace.dependencies]
 mcap2arrow = { path = "mcap2arrow/mcap2arrow" }
 mcap2arrow-arrow = { path = "mcap2arrow/mcap2arrow-arrow" }
 mcap2arrow-core = { path = "mcap2arrow/mcap2arrow-core" }
 mcap2arrow-protobuf = { path = "mcap2arrow/mcap2arrow-protobuf" }
+mcap2arrow-ros2-common = { path = "mcap2arrow/mcap2arrow-ros2-common" }
+mcap2arrow-ros2idl = { path = "mcap2arrow/mcap2arrow-ros2idl" }
+mcap2arrow-ros2msg = { path = "mcap2arrow/mcap2arrow-ros2msg" }
 
 arrow = { version = "57.3.0", default-features = false }
 mcap = "0.24.0"

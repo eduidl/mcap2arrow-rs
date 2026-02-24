@@ -1,0 +1,39 @@
+//! Ties together schema-bundle parsing, IDL parsing, and type resolution.
+
+use mcap2arrow_ros2_common::{resolve_parsed_section, ParsedSection, ResolvedSchema, Ros2Error};
+
+use crate::{parser::parse_idl_section, schema_bundle::SchemaBundle};
+
+/// Parse a multi-section IDL schema text and produce a fully resolved [`ResolvedSchema`].
+///
+/// Steps:
+/// 1. Split `schema_text` into [`SchemaBundle`] sections at `====` separator lines.
+/// 2. Parse each section with [`parse_idl_section`] and merge results.
+/// 3. Identify the root type from `schema_name`.
+/// 4. Resolve all type references.
+pub fn resolve_schema(schema_name: &str, schema_text: &str) -> Result<ResolvedSchema, Ros2Error> {
+    let bundle = SchemaBundle::parse(schema_name, schema_text)?;
+
+    let mut merged = ParsedSection::default();
+    for section in &bundle.sections {
+        let parsed = parse_idl_section(&section.body).map_err(|e| {
+            Ros2Error(format!(
+                "while parsing IDL section '{}': {e}",
+                section.idl_path.join("/")
+            ))
+        })?;
+        for (k, v) in parsed.structs {
+            merged.structs.insert(k, v);
+        }
+        for (k, v) in parsed.enums {
+            merged.enums.insert(k, v);
+        }
+    }
+    let root = bundle.main_type(schema_name).ok_or_else(|| {
+        Ros2Error(format!(
+            "unable to determine root type for schema '{schema_name}'"
+        ))
+    })?;
+
+    resolve_parsed_section(merged, root)
+}

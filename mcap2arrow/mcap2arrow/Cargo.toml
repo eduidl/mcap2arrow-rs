@@ -15,7 +15,11 @@ memmap2.workspace = true
 thiserror.workspace = true
 
 mcap2arrow-protobuf = { workspace = true, optional = true }
+mcap2arrow-ros2idl = { workspace = true, optional = true }
+mcap2arrow-ros2msg = { workspace = true, optional = true }
 
 [features]
-default = ["protobuf"]
+default = ["protobuf", "ros2idl", "ros2msg"]
 protobuf = ["dep:mcap2arrow-protobuf"]
+ros2idl = ["dep:mcap2arrow-ros2idl"]
+ros2msg = ["dep:mcap2arrow-ros2msg"]

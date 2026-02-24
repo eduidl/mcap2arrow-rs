@@ -10,6 +10,10 @@ use mcap2arrow_core::{
 };
 #[cfg(feature = "protobuf")]
 use mcap2arrow_protobuf::ProtobufDecoder;
+#[cfg(feature = "ros2idl")]
+use mcap2arrow_ros2idl::Ros2IdlDecoder;
+#[cfg(feature = "ros2msg")]
+use mcap2arrow_ros2msg::Ros2MsgDecoder;
 use memmap2::Mmap;
 
 use crate::error::McapReaderError;
@@ -237,6 +241,10 @@ impl McapReaderBuilder {
         let s = self;
         #[cfg(feature = "protobuf")]
         let s = s.with_decoder(Box::new(ProtobufDecoder::new()));
+        #[cfg(feature = "ros2idl")]
+        let s = s.with_decoder(Box::new(Ros2IdlDecoder::new()));
+        #[cfg(feature = "ros2msg")]
+        let s = s.with_decoder(Box::new(Ros2MsgDecoder::new()));
         s
     }
 

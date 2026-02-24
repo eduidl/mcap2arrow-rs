@@ -1,0 +1,11 @@
+[package]
+name = "mcap2arrow-ros2msg"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+mcap2arrow-core.workspace = true
+mcap2arrow-ros2-common.workspace = true
+re_ros_msg = "0.29.2"
+thiserror.workspace = true

@@ -1,6 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Args;
 use indicatif::{ProgressBar, ProgressStyle};
 use mcap2arrow::McapReader;
@@ -50,7 +50,7 @@ pub struct ConvertArgs {
 impl ConvertArgs {
     pub fn run(self) -> Result<()> {
         let reader = McapReader::builder().with_default_decoders().build();
-        let flatten_policy = self.flatten_policy();
+        let flatten_policy = self.flatten_policy()?;
 
         let count = reader.message_count(&self.input, &self.topic)?;
         let pb = ProgressBar::new(count);
@@ -95,7 +95,7 @@ impl ConvertArgs {
         Ok(())
     }
 
-    fn flatten_policy(&self) -> FlattenPolicy {
+    fn flatten_policy(&self) -> Result<FlattenPolicy> {
         let mut policy = self.format.default_policy();
 
         if let Some(v) = self.list_policy {
@@ -103,7 +103,7 @@ impl ConvertArgs {
         }
         if let Some(v) = self.list_flatten_size {
             if policy.list != ListPolicy::FlattenFixed {
-                panic!("--list-flatten-size requires --list-policy flatten-fixed");
+                bail!("--list-flatten-size requires --list-policy flatten-fixed");
             }
             policy.list_flatten_fixed_size = v;
         }
@@ -118,7 +118,7 @@ impl ConvertArgs {
             OutputFormat::Csv | OutputFormat::Parquet => StructPolicy::Flatten,
         };
 
-        policy
+        Ok(policy)
     }
 }
 
