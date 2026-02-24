@@ -11,7 +11,7 @@ readme = "README.md"
 [dependencies]
 mcap2arrow-arrow.workspace = true
 mcap2arrow-core.workspace = true
-arrow = { workspace = true, features = ["prettyprint"] }
+arrow.workspace = true
 mcap.workspace = true
 memmap2.workspace = true
 thiserror.workspace = true
