@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 include.workspace = true
+description = "Protobuf decoder for mcap2arrow using FileDescriptorSet schemas."
 
 [dependencies]
 mcap2arrow-core.workspace = true

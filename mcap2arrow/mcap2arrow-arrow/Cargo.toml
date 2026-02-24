@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 include.workspace = true
+description = "Arrow conversion utilities built on top of mcap2arrow-core schemas and values."
 
 [dependencies]
 mcap2arrow-core.workspace = true

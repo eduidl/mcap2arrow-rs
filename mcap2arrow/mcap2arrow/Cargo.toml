@@ -5,6 +5,8 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 include.workspace = true
+description = "MCAP to Arrow conversion library with protobuf and ROS 2 decoders."
+readme = "README.md"
 
 [dependencies]
 mcap2arrow-arrow.workspace = true

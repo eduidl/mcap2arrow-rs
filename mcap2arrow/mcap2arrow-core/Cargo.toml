@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 include.workspace = true
+description = "Core schema and value types for decoding MCAP payloads into structured data."
 
 [dependencies]
 thiserror.workspace = true

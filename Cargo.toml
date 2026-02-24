@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/eduidl/mcap2arrow-rs"
-include = ["src/**/*", "Cargo.toml", "README.md"]
+include = ["src/**/*", "tests/**/*", "Cargo.toml", "README.md"]
 
 [workspace.dependencies]
 mcap2arrow = { path = "mcap2arrow/mcap2arrow", version = "=0.1.0" }

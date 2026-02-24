@@ -1,8 +1,11 @@
 [package]
 name = "mcap2arrow-ros2msg"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+include.workspace = true
+description = "ROS 2 .msg schema decoder for mcap2arrow CDR payloads."
 
 [dependencies]
 mcap2arrow-core.workspace = true
