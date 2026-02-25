@@ -1,5 +1,7 @@
 # transmcap
 
+[![crates.io](https://img.shields.io/crates/v/transmcap.svg)](https://crates.io/crates/transmcap)
+
 `transmcap` is a CLI that decodes MCAP messages through `mcap2arrow` and writes results as JSON Lines, CSV, or Parquet.
 
 ## Installation

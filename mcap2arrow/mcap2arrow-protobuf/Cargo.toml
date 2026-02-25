@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 include.workspace = true
+readme = "README.md"
 description = "Protobuf decoder for mcap2arrow using FileDescriptorSet schemas."
 
 [dependencies]

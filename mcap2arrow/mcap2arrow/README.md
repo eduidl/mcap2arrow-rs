@@ -1,5 +1,7 @@
 # mcap2arrow
 
+[![crates.io](https://img.shields.io/crates/v/mcap2arrow.svg)](https://crates.io/crates/mcap2arrow)
+
 `mcap2arrow` is a Rust library that decodes MCAP channels/messages and exposes rows as Apache Arrow `RecordBatch` streams.
 
 ## Installation
