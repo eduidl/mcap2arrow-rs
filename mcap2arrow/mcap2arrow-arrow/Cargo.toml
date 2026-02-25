@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 include.workspace = true
+readme = "README.md"
 description = "Arrow conversion utilities built on top of mcap2arrow-core schemas and values."
 
 [dependencies]

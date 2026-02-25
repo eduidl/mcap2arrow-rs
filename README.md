@@ -1,5 +1,8 @@
 # mcap2arrow-rs
 
+[![CI](https://github.com/eduidl/mcap2arrow-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/eduidl/mcap2arrow-rs/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/mcap2arrow.svg)](https://crates.io/crates/mcap2arrow)
+
 Rust workspace for converting MCAP data into Apache Arrow representations.
 
 ## Crates

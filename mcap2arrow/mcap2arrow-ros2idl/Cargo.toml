@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 include.workspace = true
+readme = "README.md"
 description = "ROS 2 IDL schema decoder for mcap2arrow CDR payloads."
 
 [dependencies]

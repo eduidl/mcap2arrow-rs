@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 include.workspace = true
+readme = "README.md"
 description = "Core schema and value types for decoding MCAP payloads into structured data."
 
 [dependencies]
