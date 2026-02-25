@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+      - 'transmcap/v[0-9]+.[0-9]+.[0-9]+'
+      - 'transmcap/v[0-9]+.[0-9]+.[0-9]+-*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --workspace --all-features
+
+  release:
+    name: Build & Release
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install musl toolchain
+        run: sudo apt-get install -y musl-tools
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-unknown-linux-musl
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+        run: cargo build --release --target x86_64-unknown-linux-musl -p transmcap
+
+      - name: Strip binary
+        run: strip --strip-all target/x86_64-unknown-linux-musl/release/transmcap
+
+      - name: Package
+        run: |
+          tar -czf transmcap-linux-amd64.tar.gz \
+            -C target/x86_64-unknown-linux-musl/release transmcap
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: transmcap-linux-amd64.tar.gz
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
