@@ -7,6 +7,7 @@ use mcap2arrow::{
     McapReader,
     arrow::{
         ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy, flatten_record_batch,
+        project_record_batch,
     },
 };
 
@@ -47,6 +48,11 @@ pub struct ConvertArgs {
     /// Policy for Map columns: drop | keep
     #[arg(long, value_parser = parse_map_policy)]
     map_policy: Option<MapPolicy>,
+
+    /// Comma-separated list of fields to include in the output (all fields if not specified).
+    /// Field paths are applied before flattening (e.g. "x,y,z" or "position.x,position.y").
+    #[arg(long, value_delimiter = ',')]
+    fields: Option<Vec<String>>,
 }
 
 impl ConvertArgs {
@@ -77,8 +83,13 @@ impl ConvertArgs {
         let mut dropped_warned = false;
 
         reader.for_each_record_batch(&self.input, &self.topic, |batch| {
+            let projected = if let Some(fields) = &self.fields {
+                project_record_batch(&batch, fields)?
+            } else {
+                batch
+            };
             let (flat_batch, dropped_columns) =
-                flatten_record_batch(&batch, None, &flatten_policy)?;
+                flatten_record_batch(&projected, None, &flatten_policy)?;
             if !dropped_warned && !dropped_columns.is_empty() {
                 dropped_warned = true;
                 eprintln!(

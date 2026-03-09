@@ -42,6 +42,7 @@ Commands:
 - `--list-flatten-size <N>`: only valid with `--list-policy flatten-fixed`
 - `--array-policy <POLICY>`: `drop | keep | flatten`
 - `--map-policy <POLICY>`: `drop | keep`
+- `--fields <FIELDS>`: comma-separated field paths to include (applied before flattening)
 
 ## `schema` Options
 

@@ -30,6 +30,7 @@
 pub mod arrow_convert;
 pub mod error;
 pub mod flatten;
+pub mod projection;
 pub mod schema_convert;
 
 /// Re-export of [`arrow_convert::arrow_value_rows_to_record_batch`].
@@ -42,6 +43,8 @@ pub use error::ArrowConvertError;
 pub use flatten::{
     ArrayPolicy, FlattenPolicy, ListPolicy, MapPolicy, StructPolicy, flatten_record_batch,
 };
+/// Re-export of [`projection::project_record_batch`].
+pub use projection::project_record_batch;
 /// Re-export of [`schema_convert::field_defs_to_arrow_schema`].
 pub use schema_convert::field_defs_to_arrow_schema;
 
