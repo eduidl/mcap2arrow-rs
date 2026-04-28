@@ -1,0 +1,15 @@
+[package]
+name = "mcapdecode-arrow"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+include.workspace = true
+readme = "README.md"
+description = "Arrow conversion utilities built on top of mcapdecode-core schemas and values."
+
+[dependencies]
+mcapdecode-core.workspace = true
+arrow.workspace = true
+thiserror.workspace = true

@@ -1,20 +1,20 @@
-# mcap2arrow-rs
+# mcapdecode-rs
 
 [![CI](https://github.com/eduidl/mcap2arrow-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/eduidl/mcap2arrow-rs/actions/workflows/ci.yml)
-[![crates.io](https://img.shields.io/crates/v/mcap2arrow.svg)](https://crates.io/crates/mcap2arrow)
+[![crates.io](https://img.shields.io/crates/v/mcapdecode.svg)](https://crates.io/crates/mcapdecode)
 
-Rust workspace for converting MCAP data into Apache Arrow representations.
+Rust workspace for decoding MCAP data into a normalized schema/value model, with optional Apache Arrow integration.
 
 ## Crates
 
-- [`mcap2arrow`](mcap2arrow/mcap2arrow): library entry point for decoding MCAP into Arrow `RecordBatch`
+- [`mcapdecode`](mcapdecode/mcapdecode): library entry point for decoding MCAP into structured messages, with optional Arrow `RecordBatch` output
 - [`transmcap`](tools/transmcap): CLI for converting MCAP to `jsonl/csv/parquet`
-- `mcap2arrow-*`: internal/support crates used by `mcap2arrow`
+- `mcapdecode-*`: internal/support crates used by `mcapdecode`
 
 ## Start Here
 
 - CLI usage and options: [`tools/transmcap/README.md`](tools/transmcap/README.md)
-- Library usage and feature flags: [`mcap2arrow/mcap2arrow/README.md`](mcap2arrow/mcap2arrow/README.md)
+- Library usage and feature flags: [`mcapdecode/mcapdecode/README.md`](mcapdecode/mcapdecode/README.md)
 
 ## Quick CLI Usage (`transmcap`)
 

@@ -1,0 +1,13 @@
+[package]
+name = "mcapdecode-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+include.workspace = true
+readme = "README.md"
+description = "Core schema and value types for decoding MCAP payloads into structured data."
+
+[dependencies]
+thiserror.workspace = true
