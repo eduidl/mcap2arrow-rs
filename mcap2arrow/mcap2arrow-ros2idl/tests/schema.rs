@@ -1,5 +1,5 @@
 use mcap2arrow_ros2_common::{PrimitiveType, ResolvedType};
-use mcap2arrow_ros2idl::{SchemaBundle, resolve_schema};
+use mcap2arrow_ros2idl::{SchemaBundle, parse_idl_section, resolve_schema};
 
 // ── existing tests ─────────────────────────────────────────────────────────────
 
@@ -376,6 +376,36 @@ module ex {
 }
 
 #[test]
+fn parse_idl_section_supports_multiline_struct_open_with_consts() {
+    let parsed = parse_idl_section(
+        r#"
+module ex {
+  module msg {
+    struct Sample
+    {
+      const uint8 KIND_A = 1;
+      uint8 kind;
+    };
+  };
+};
+"#,
+    )
+    .expect("IDL should parse");
+
+    let sample = parsed
+        .structs
+        .get(&vec![
+            "ex".to_string(),
+            "msg".to_string(),
+            "Sample".to_string(),
+        ])
+        .expect("Sample struct should exist");
+    assert_eq!(sample.consts.len(), 1);
+    assert_eq!(sample.fields.len(), 1);
+    assert_eq!(sample.fields[0].name, "kind");
+}
+
+#[test]
 fn resolve_schema_parses_fixed_array_field() {
     let schema = r#"
 ================================================================================
@@ -476,4 +506,33 @@ module ex {
     let err =
         resolve_schema("ex/msg/Unsupported", schema).expect_err("long double must be rejected");
     assert!(format!("{err:#}").contains("unsupported IDL type `long double`"));
+}
+
+#[test]
+fn resolve_schema_accepts_constants_before_multiline_struct() {
+    let schema = r#"
+================================================================================
+IDL: ex/msg/Sample
+module ex {
+  module msg {
+    const uint8 KIND_A = 1;
+    const uint8 KIND_B = 2;
+    struct Sample
+    {
+      string name;
+      uint8 kind;
+    };
+  };
+};
+"#;
+
+    let resolved = resolve_schema("ex/msg/Sample", schema).expect("resolve should succeed");
+    let sample = resolved
+        .structs
+        .get(&vec!["ex".into(), "msg".into(), "Sample".into()])
+        .expect("Sample should exist");
+
+    assert_eq!(sample.fields.len(), 2);
+    assert_eq!(sample.fields[0].name, "name");
+    assert_eq!(sample.fields[1].name, "kind");
 }
