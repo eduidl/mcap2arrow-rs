@@ -23,6 +23,7 @@ use mcap2arrow_core::{
 };
 use mcap2arrow_ros2_common::{ResolvedSchema, Ros2CdrTopicDecoder};
 pub use resolver::resolve_schema;
+pub use parser::parse_idl_section;
 pub use schema_bundle::{IdlSection, SchemaBundle};
 
 /// [`MessageDecoder`] for ROS 2 IDL schemas with CDR-encoded messages.

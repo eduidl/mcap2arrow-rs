@@ -43,12 +43,19 @@ use nom::{
 
 use crate::lex::strip_line_comments;
 
+enum PendingDecl {
+    Module(String),
+    Struct(String),
+    Enum(String),
+}
+
 pub fn parse_idl_section(idl_body: &str) -> Result<ParsedSection, Ros2Error> {
     let mut structs: HashMap<Vec<String>, StructDef> = HashMap::new();
     let mut enums: HashMap<Vec<String>, EnumDef> = HashMap::new();
     let mut modules: Vec<String> = Vec::new();
     let mut current_struct: Option<(String, Vec<FieldDef>, Vec<ConstDef>)> = None;
     let mut current_enum: Option<(String, Vec<String>)> = None;
+    let mut pending_decl: Option<PendingDecl> = None;
 
     let mut annotation_depth = 0i32;
     let mut ann_in_str = false;
@@ -73,6 +80,36 @@ pub fn parse_idl_section(idl_body: &str) -> Result<ParsedSection, Ros2Error> {
             continue;
         }
 
+        if let Some(pending) = pending_decl.take() {
+            if line != "{" {
+                return Err(
+                    format!("expected '{{' after declaration at line {line_no}: {line}").into(),
+                );
+            }
+            match pending {
+                PendingDecl::Module(name) => modules.push(name),
+                PendingDecl::Struct(name) => {
+                    if current_struct.is_some() || current_enum.is_some() {
+                        return Err(format!(
+                            "nested declaration unsupported at line {line_no}: {line}"
+                        )
+                        .into());
+                    }
+                    current_struct = Some((name, Vec::new(), Vec::new()));
+                }
+                PendingDecl::Enum(name) => {
+                    if current_struct.is_some() || current_enum.is_some() {
+                        return Err(format!(
+                            "nested declaration unsupported at line {line_no}: {line}"
+                        )
+                        .into());
+                    }
+                    current_enum = Some((name, Vec::new()));
+                }
+            }
+            continue;
+        }
+
         if line.starts_with("union ")
             || line.starts_with("bitmask ")
             || line.starts_with("typedef ")
@@ -82,6 +119,10 @@ pub fn parse_idl_section(idl_body: &str) -> Result<ParsedSection, Ros2Error> {
 
         if let Some(name) = parse_module_open(line) {
             modules.push(name.to_string());
+            continue;
+        }
+        if let Some(name) = parse_module_head(line) {
+            pending_decl = Some(PendingDecl::Module(name.to_string()));
             continue;
         }
 
@@ -94,6 +135,15 @@ pub fn parse_idl_section(idl_body: &str) -> Result<ParsedSection, Ros2Error> {
             current_struct = Some((name.to_string(), Vec::new(), Vec::new()));
             continue;
         }
+        if let Some(name) = parse_struct_head(line) {
+            if current_struct.is_some() || current_enum.is_some() {
+                return Err(
+                    format!("nested declaration unsupported at line {line_no}: {line}").into(),
+                );
+            }
+            pending_decl = Some(PendingDecl::Struct(name.to_string()));
+            continue;
+        }
 
         if let Some(name) = parse_enum_open(line) {
             if current_struct.is_some() || current_enum.is_some() {
@@ -102,6 +152,15 @@ pub fn parse_idl_section(idl_body: &str) -> Result<ParsedSection, Ros2Error> {
                 );
             }
             current_enum = Some((name.to_string(), Vec::new()));
+            continue;
+        }
+        if let Some(name) = parse_enum_head(line) {
+            if current_struct.is_some() || current_enum.is_some() {
+                return Err(
+                    format!("nested declaration unsupported at line {line_no}: {line}").into(),
+                );
+            }
+            pending_decl = Some(PendingDecl::Enum(name.to_string()));
             continue;
         }
 
@@ -157,6 +216,12 @@ pub fn parse_idl_section(idl_body: &str) -> Result<ParsedSection, Ros2Error> {
             continue;
         }
 
+        if line.starts_with("const ") {
+            parse_const(line)
+                .map_err(|e| Ros2Error(format!("parse error at line {line_no}: {e}")))?;
+            continue;
+        }
+
         return Err(format!("unexpected top-level statement at line {line_no}: {line}").into());
     }
 
@@ -165,6 +230,9 @@ pub fn parse_idl_section(idl_body: &str) -> Result<ParsedSection, Ros2Error> {
     }
     if current_enum.is_some() {
         return Err("unclosed enum declaration".into());
+    }
+    if pending_decl.is_some() {
+        return Err("declaration missing opening brace".into());
     }
     Ok(ParsedSection { structs, enums })
 }
@@ -177,11 +245,27 @@ fn module_decl(input: &str) -> IResult<&str, &str> {
     )(input)
 }
 
+/// Parse module declaration head: module Name
+fn module_decl_head(input: &str) -> IResult<&str, &str> {
+    map(
+        tuple((tag("module"), ws1, identifier, ws)),
+        |(_, _, name, _)| name,
+    )(input)
+}
+
 /// Parse struct declaration: struct Name {
 fn struct_decl(input: &str) -> IResult<&str, &str> {
     map(
         tuple((tag("struct"), ws1, identifier, ws, char('{'))),
         |(_, _, name, _, _)| name,
+    )(input)
+}
+
+/// Parse struct declaration head: struct Name
+fn struct_decl_head(input: &str) -> IResult<&str, &str> {
+    map(
+        tuple((tag("struct"), ws1, identifier, ws)),
+        |(_, _, name, _)| name,
     )(input)
 }
 
@@ -193,16 +277,45 @@ fn enum_decl(input: &str) -> IResult<&str, &str> {
     )(input)
 }
 
+/// Parse enum declaration head: enum Name
+fn enum_decl_head(input: &str) -> IResult<&str, &str> {
+    map(
+        tuple((tag("enum"), ws1, identifier, ws)),
+        |(_, _, name, _)| name,
+    )(input)
+}
+
 fn parse_module_open(line: &str) -> Option<&str> {
     module_decl(line.trim()).ok().map(|(_, name)| name)
+}
+
+fn parse_module_head(line: &str) -> Option<&str> {
+    module_decl_head(line.trim())
+        .ok()
+        .filter(|(remaining, _)| remaining.trim().is_empty())
+        .map(|(_, name)| name)
 }
 
 fn parse_struct_open(line: &str) -> Option<&str> {
     struct_decl(line.trim()).ok().map(|(_, name)| name)
 }
 
+fn parse_struct_head(line: &str) -> Option<&str> {
+    struct_decl_head(line.trim())
+        .ok()
+        .filter(|(remaining, _)| remaining.trim().is_empty())
+        .map(|(_, name)| name)
+}
+
 fn parse_enum_open(line: &str) -> Option<&str> {
     enum_decl(line.trim()).ok().map(|(_, name)| name)
+}
+
+fn parse_enum_head(line: &str) -> Option<&str> {
+    enum_decl_head(line.trim())
+        .ok()
+        .filter(|(remaining, _)| remaining.trim().is_empty())
+        .map(|(_, name)| name)
 }
 
 fn parse_const(line: &str) -> Result<ConstDef, Ros2Error> {
