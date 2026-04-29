@@ -646,6 +646,43 @@ fn for_each_decoded_message_propagates_callback_error() {
     assert!(err.to_string().contains("callback failed"));
 }
 
+#[test]
+fn for_each_decoded_message_parallel_stops_after_callback_error() {
+    let fixture = write_chunked_fixture(
+        "parallel-callback-stop",
+        &[
+            br#"{"value":1}"#,
+            br#"{"value":2}"#,
+            br#"{"value":3}"#,
+            br#"{"value":4}"#,
+            br#"{"value":5}"#,
+        ],
+    );
+
+    let reader = McapReader::builder()
+        .with_decoder(Box::new(TestJsonDecoder))
+        .with_parallel(true)
+        .build();
+    let mut visited = Vec::new();
+
+    let err = reader
+        .for_each_decoded_message(fixture.path(), "/decoded", |message| {
+            if let Value::Struct(fields) = &message.value {
+                if let Some(Value::I64(value)) = fields.first() {
+                    visited.push(*value);
+                }
+            }
+            if visited.len() == 2 {
+                return Err("callback failed".into());
+            }
+            Ok(())
+        })
+        .unwrap_err();
+
+    assert!(matches!(err, McapReaderError::Callback(_)));
+    assert_eq!(visited, vec![1, 2]);
+}
+
 #[cfg(feature = "arrow")]
 #[test]
 fn for_each_record_batch_parallel_matches_sequential_for_multi_chunk_fixture() {
