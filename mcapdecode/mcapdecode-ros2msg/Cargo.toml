@@ -1,0 +1,16 @@
+[package]
+name = "mcapdecode-ros2msg"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+include.workspace = true
+readme = "README.md"
+description = "ROS 2 .msg schema decoder for mcapdecode CDR payloads."
+
+[dependencies]
+mcapdecode-core.workspace = true
+mcapdecode-ros2-common.workspace = true
+re_ros_msg = "0.29.2"
+thiserror.workspace = true

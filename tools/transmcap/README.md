@@ -2,7 +2,7 @@
 
 [![crates.io](https://img.shields.io/crates/v/transmcap.svg)](https://crates.io/crates/transmcap)
 
-`transmcap` is a CLI that decodes MCAP messages through `mcap2arrow` and writes results as JSON Lines, CSV, or Parquet.
+`transmcap` is a CLI that decodes MCAP messages through `mcapdecode` and writes results as JSON Lines, CSV, or Parquet.
 
 ## Installation
 
@@ -25,13 +25,13 @@ Commands:
 
 `transmcap` uses `McapReader::with_default_decoders()`. Supported encoding pairs:
 
-| Schema encoding | Message encoding | Required `mcap2arrow` feature | Notes |
+| Schema encoding | Message encoding | Required `mcapdecode` feature | Notes |
 | --- | --- | --- | --- |
 | `protobuf` | `protobuf` | `protobuf` | Uses `schema.data` as `FileDescriptorSet` |
 | `ros2msg` | `cdr` | `ros2msg` | ROS 2 `.msg` schema |
 | `ros2idl` | `cdr` | `ros2idl` | ROS 2 IDL schema |
 
-`mcap2arrow` default features are `protobuf`, `ros2msg`, `ros2idl`.
+`mcapdecode` default features are `protobuf`, `ros2msg`, `ros2idl`.
 
 ## `convert` Options
 
