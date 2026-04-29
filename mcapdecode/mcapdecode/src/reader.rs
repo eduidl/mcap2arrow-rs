@@ -2,9 +2,13 @@
 
 use std::{
     collections::{BTreeMap, HashMap},
-    fs,
+    fs, io,
     path::Path,
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
 };
 
 use mcapdecode_core::{
@@ -262,40 +266,102 @@ impl McapReader {
     {
         use rayon::prelude::*;
 
-        // chunk_indexes preserves file order; par_iter preserves that order in results.
-        let chunk_decoded: Vec<Vec<DecodedMessage>> = summary
+        let chunk_indexes: Vec<_> = summary
             .chunk_indexes
-            .par_iter()
+            .iter()
             .filter(|ci| ci.message_index_offsets.contains_key(&context.channel_id))
-            .map(
-                |chunk_index| -> Result<Vec<DecodedMessage>, McapReaderError> {
-                    summary
-                        .stream_chunk(mmap, chunk_index)?
-                        .filter_map(|msg_result| match msg_result {
-                            Ok(msg) if msg.channel.id == context.channel_id => {
-                                Some(self.decode_message(
-                                    context,
-                                    topic,
-                                    msg.log_time,
-                                    msg.publish_time,
-                                    &msg.data,
-                                ))
-                            }
-                            Ok(_) => None,
-                            Err(e) => Some(Err(e.into())),
-                        })
-                        .collect()
-                },
-            )
-            .collect::<Result<Vec<_>, McapReaderError>>()?;
+            .collect();
+        let chunk_count = chunk_indexes.len();
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let (sender, receiver) = mpsc::channel();
 
-        for chunk_messages in chunk_decoded {
-            for decoded in chunk_messages {
-                callback(decoded)?;
+        std::thread::scope(|scope| -> Result<(), McapReaderError> {
+            let worker_sender = sender.clone();
+            let worker = scope.spawn(|| {
+                chunk_indexes.into_par_iter().enumerate().for_each_with(
+                    worker_sender,
+                    |sender, (position, chunk_index)| {
+                        let result = self.decode_chunk_messages(
+                            mmap,
+                            summary,
+                            context,
+                            topic,
+                            chunk_index,
+                            &cancelled,
+                        );
+                        let _ = sender.send((position, result));
+                    },
+                );
+            });
+            drop(sender);
+
+            let mut next_position = 0usize;
+            let mut pending = BTreeMap::new();
+            while next_position < chunk_count {
+                let (position, result) = receiver.recv().map_err(|_| {
+                    McapReaderError::Io(io::Error::other(
+                        "parallel decode worker disconnected unexpectedly",
+                    ))
+                })?;
+                pending.insert(position, result);
+
+                while let Some(result) = pending.remove(&next_position) {
+                    let chunk_messages = match result {
+                        Ok(messages) => messages,
+                        Err(error) => {
+                            cancelled.store(true, Ordering::Relaxed);
+                            return Err(error);
+                        }
+                    };
+                    for decoded in chunk_messages {
+                        if let Err(error) = callback(decoded) {
+                            cancelled.store(true, Ordering::Relaxed);
+                            return Err(error);
+                        }
+                    }
+                    next_position += 1;
+                }
             }
-        }
+            let _ = worker.join();
+            Ok(())
+        })?;
 
         Ok(())
+    }
+
+    fn decode_chunk_messages(
+        &self,
+        mmap: &Mmap,
+        summary: &mcap::read::Summary,
+        context: &TopicDecodeContext,
+        topic: &str,
+        chunk_index: &mcap::records::ChunkIndex,
+        cancelled: &AtomicBool,
+    ) -> Result<Vec<DecodedMessage>, McapReaderError> {
+        if cancelled.load(Ordering::Relaxed) {
+            return Ok(Vec::new());
+        }
+
+        let mut decoded_messages = Vec::new();
+        for msg_result in summary.stream_chunk(mmap, chunk_index)? {
+            if cancelled.load(Ordering::Relaxed) {
+                return Ok(decoded_messages);
+            }
+
+            let msg = msg_result?;
+            if msg.channel.id != context.channel_id {
+                continue;
+            }
+            decoded_messages.push(self.decode_message(
+                context,
+                topic,
+                msg.log_time,
+                msg.publish_time,
+                &msg.data,
+            )?);
+        }
+
+        Ok(decoded_messages)
     }
 
     fn for_each_decoded_message_sequential<F>(
