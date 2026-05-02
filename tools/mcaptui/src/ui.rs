@@ -29,6 +29,14 @@ pub fn render(frame: &mut Frame<'_>, app: &mut App) {
     render_help(frame, layout[2], app.screen(), app.focus());
 }
 
+pub fn render_loading(frame: &mut Frame<'_>, message: &str) {
+    let area = frame.area();
+    let paragraph = Paragraph::new(message)
+        .style(Style::default().fg(Color::Cyan))
+        .block(Block::default().title("mcaptui").borders(Borders::ALL));
+    frame.render_widget(paragraph, centered_rect(60, 20, area));
+}
+
 fn render_topics(frame: &mut Frame<'_>, area: Rect, app: &mut App) {
     let table_area = area;
     let schema_area = app.schema_visible().then(|| schema_popup_area(area));

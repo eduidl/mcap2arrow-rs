@@ -65,6 +65,9 @@ fn run(cli: Cli) -> Result<()> {
         .with_default_decoders()
         .with_parallel(cli.parallel)
         .build();
+    let mut terminal = terminal::init_terminal()?;
+    terminal.draw(|frame| ui::render_loading(frame, "Loading topics..."))?;
+
     let topics = reader
         .list_topics(&cli.input)
         .with_context(|| format!("failed to read topics from {}", cli.input.display()))?;
@@ -92,8 +95,6 @@ fn run(cli: Cli) -> Result<()> {
             );
         }
     }
-
-    let mut terminal = terminal::init_terminal()?;
 
     if cli.topic.is_some() {
         let selected = app
